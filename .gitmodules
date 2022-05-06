@@ -1,3 +1,12 @@
 [submodule "build"]
 	path = build
 	url = https://github.com/no2fpga/no2build
+[submodule "cores/no2ice40"]
+	path = cores/no2ice40
+	url = https://github.com/no2fpga/no2ice40
+[submodule "cores/no2misc"]
+	path = cores/no2misc
+	url = https://github.com/no2fpga/no2misc
+[submodule "cores/no2qpimem"]
+	path = cores/no2qpimem
+	url = https://github.com/no2fpga/no2qpimem
