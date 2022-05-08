@@ -1,0 +1,62 @@
+#
+# iCEBreaker prototyping
+#
+
+# Oscillator input (12 MHz)
+set_io clk_in 35
+set_frequency clk_in 12
+
+# UART (to FTDI)
+set_io -nowarn -pullup yes uart_tx      9
+set_io -nowarn -pullup yes uart_rx      6
+
+# IRQ (to ESP32)
+set_io -nowarn -pullup yes irq_n       37  # LED green
+
+# SPI Slave (to FTDI)
+set_io -nowarn -pullup no  spi_mosi    14
+set_io -nowarn -pullup no  spi_miso    17
+set_io -nowarn -pullup no  spi_clk     15
+set_io -nowarn -pullup yes spi_cs_n    11
+set_frequency spi_clk 60
+
+# PSRAM (on PMOD2)
+set_io -nowarn -pullup no  ram_io[0]   25
+set_io -nowarn -pullup no  ram_io[1]   21
+set_io -nowarn -pullup no  ram_io[2]   26
+set_io -nowarn -pullup no  ram_io[3]   23
+set_io -nowarn -pullup no  ram_clk     19
+set_io -nowarn -pullup yes ram_cs_n    27
+
+# LCD
+set_io -nowarn -pullup no  lcd_d[0]     4 # PMOD 1A.1
+set_io -nowarn -pullup no  lcd_d[1]     2 # PMOD 1A.2
+set_io -nowarn -pullup no  lcd_d[2]    47 # PMOD 1A.3
+set_io -nowarn -pullup no  lcd_d[3]    45 # PMOD 1A.4
+set_io -nowarn -pullup no  lcd_d[4]     3 # PMOD 1A.7
+set_io -nowarn -pullup no  lcd_d[5]    48 # PMOD 1A.8
+set_io -nowarn -pullup no  lcd_d[6]    46 # PMOD 1A.9
+set_io -nowarn -pullup no  lcd_d[7]    44 # PMOD 1A.10
+set_io -nowarn -pullup yes lcd_rs      43 # PMOD 1B.1
+set_io -nowarn -pullup yes lcd_wr_n    42 # PMOD 1B.7
+set_io -nowarn -pullup yes lcd_cs_n    38 # PMOD 1B.2
+
+set_io -nowarn -pullup no  lcd_mode    36 # PMOD 1B.8
+set_io -nowarn -pullup no  lcd_rst_n   34 # PMOD 1B.3
+
+set_io -nowarn -pullup no  lcd_fmark   32 # PMOD 1B.9
+
+# PMOD
+set_io -nowarn -pullup no  pmod[0]     20  # PSRAM CS0
+set_io -nowarn -pullup no  pmod[1]     18  # PSRAM CS1
+set_io -nowarn -pullup no  pmod[2]     31  # PMOD 1B.4
+set_io -nowarn -pullup no  pmod[3]     28  # PMOD 1B.10
+set_io -nowarn -pullup no  pmod[4]     10  # Button
+set_io -nowarn -pullup no  pmod[5]     12  # Flash IO2/WP_n
+set_io -nowarn -pullup no  pmod[6]     13  # Flash IO3/RST_n
+set_io -nowarn -pullup no  pmod[7]     16  # Flash CS_n
+
+# RGB driver
+set_io -nowarn             rgb[0]      39
+set_io -nowarn             rgb[1]      40
+set_io -nowarn             rgb[2]      41
