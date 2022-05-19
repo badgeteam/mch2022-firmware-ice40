@@ -108,6 +108,11 @@ led_color(uint8_t r, uint8_t g, uint8_t b)
 	led_regs->ip.pwrr = r;
 	led_regs->ip.pwrg = g;
 	led_regs->ip.pwrb = b;
+#elif defined(BOARD_MCH2022_PROTO4)
+	// MCH2022 badge prototype 4
+	led_regs->ip.pwrr = b;
+	led_regs->ip.pwrg = r;
+	led_regs->ip.pwrb = g;
 #else
 	// Default / Unknown
 	led_regs->ip.pwrr = r;
