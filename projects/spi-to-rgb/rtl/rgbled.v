@@ -17,6 +17,7 @@ module rgbled (
 
   wire w_cycle_r, w_cycle_g, w_cycle_b;
   wire w_led_r, w_led_g, w_led_b;
+  reg r_led_r, r_led_g, r_led_b;
   wire nrst;
 
   assign nrst = ~rst;
@@ -77,18 +78,22 @@ module rgbled (
   // Whitch between input and cycle mode
   always @(posedge clk) begin
     if (rst) begin
-      w_led_r <= 1'b0;
-      w_led_g <= 1'b0;
-      w_led_b <= 1'b0;
+      r_led_r <= 1'b0;
+      r_led_g <= 1'b0;
+      r_led_b <= 1'b0;
     end else if (test_mode) begin
-      w_led_r <= w_cycle_r;
-      w_led_g <= w_cycle_g;
-      w_led_b <= w_cycle_b;
+      r_led_r <= w_cycle_r;
+      r_led_g <= w_cycle_g;
+      r_led_b <= w_cycle_b;
     end else begin
-      w_led_r <= in_r;
-      w_led_g <= in_g;
-      w_led_b <= in_b;
+      r_led_r <= in_r;
+      r_led_g <= in_g;
+      r_led_b <= in_b;
     end
   end
+
+  assign w_led_r = r_led_r;
+  assign w_led_g = r_led_g;
+  assign w_led_b = r_led_b;
 
 endmodule

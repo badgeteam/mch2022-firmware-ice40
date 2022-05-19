@@ -1,4 +1,5 @@
-// A simple circuit that can be used to detect brownouts and other hardware issues
+// A simple LED cycle routine
+`default_nettype none
 
 module cycle #(
   parameter START_POS=0
@@ -12,22 +13,12 @@ module cycle #(
   reg [7:0] r_count_out = 0;
   reg [16:0] r_count_raw = {START_POS, 6'h00};
   reg [19:0] r_count_speed = 0;
-  reg [7:0] r_count_duty = 0;
   reg [7:0] r_count_duty_next = 0;
-  reg r_rstn = 0;
 
   reg r_led;
 
   wire [10:0] w_count_cur;
 
-
-  /*
-   * Wait for system system to stabilize 
-   */
-  always @(posedge i_clk) begin
-    r_rst_counter <= r_rst_counter + 1;
-    r_rstn <= r_rstn | &r_rst_counter;
-  end
 
   /*
    * Speed devider
@@ -37,23 +28,24 @@ module cycle #(
     if (r_count_speed == i_speed) // 124 +- 2 s
       r_count_speed <= 0;
 
-    if(i_rst == 1'b1 || r_rstn == 1'b0) begin
+    if(i_rst == 1'b1) begin
       r_count_speed <= 'b0;
     end
   end
+
+  reg [7:0] control;
+  reg [7:0] phase;
+
+  wire [8:0] phase_new = phase + r_count_out;
 
   // count_cur up and down
   always @(posedge i_clk) begin
     // Update counters every X cycles
     if (r_count_speed == 0) begin
 
-      // PWM the led_g
-      r_count_duty <= r_count_duty + 1;
-      if (r_count_duty == 8'hff) r_count_duty <= 'b0;
-
-      r_led <= 1'b1;
-      if(r_count_out > r_count_duty)
-        r_led <= 1'b0;
+      // PWM the led
+      phase <= phase_new[7:0];
+      r_led <= phase_new[8];
 
       /**
        * Create the shape that cycles the colors
@@ -89,10 +81,10 @@ module cycle #(
     end
 
     // Reset holds counters 
-    if(i_rst == 1'b1 || r_rstn == 1'b0) begin
-      r_count_duty  <= 0;
+    if(i_rst == 1'b1 ) begin
+      r_count_out  <= 0;
       r_count_raw   <= {START_POS, 6'b0};
-    end 
+    end
 
   end
 
