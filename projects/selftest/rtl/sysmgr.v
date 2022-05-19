@@ -60,11 +60,7 @@ module sysmgr (
 		.PHASE      (2),
 		.NEG_EDGE   (0),
 		.GLOBAL_BUF (0),
-`ifdef BOARD_ICEBREAKER
-		.LOCAL_BUF  (1),
-`else
 		.LOCAL_BUF  (0),
-`endif
 		.BEL_COL    ("X21"),
 		.BEL_ROW    ("Y4")
 	) sync_4x_I (

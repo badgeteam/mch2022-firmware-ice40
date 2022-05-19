@@ -90,7 +90,6 @@ module gpio_wb #(
 	// IOBs
 	// ----
 
-`ifndef BOARD_ICEBREAKER
 	SB_IO #(
 		.PIN_TYPE(6'b1101_00),   // Reg input, Reg+RegOE output
 		.PULLUP(1'b0),
@@ -103,31 +102,5 @@ module gpio_wb #(
 		.D_OUT_0       (gpio_o),
 		.OUTPUT_ENABLE (gpio_oe)
 	);
-`else
-	// Because of IO conflicts on the icebreaker pin mapping, can't use
-	// registers. Also pin 11 is output only
-	SB_IO #(
-		.PIN_TYPE(6'b1010_01),
-		.PULLUP(1'b0),
-		.IO_STANDARD("SB_LVCMOS")
-	) iob_I[10:0] (
-		.PACKAGE_PIN   (gpio[10:0]),
-		.D_IN_0        (gpio_i[10:0]),
-		.D_OUT_0       (gpio_o[10:0]),
-		.OUTPUT_ENABLE (gpio_oe[10:0])
-	);
-
-	SB_IO #(
-		.PIN_TYPE(6'b1010_01),
-		.PULLUP(1'b0),
-		.IO_STANDARD("SB_LVCMOS")
-	) iob_irq_I (
-		.PACKAGE_PIN   (gpio[11]),
-		.D_OUT_0       (gpio_o[11]),
-		.OUTPUT_ENABLE (gpio_oe[11])
-	);
-
-	assign gpio_i[11] = 1'b0;
-`endif
 
 endmodule // gpio_wb
