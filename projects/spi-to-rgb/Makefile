@@ -26,3 +26,5 @@ NEXTPNR_ARGS = --no-promote-globals --seed $(NEXTPNR_SEED)
 
 # Include default rules
 include ../../build/project-rules.mk
+
+

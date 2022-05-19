@@ -1,4 +1,13 @@
-// A simple LED cycle routine
+/*
+ * cycle.v
+ *
+ * vim: ts=4 sw=4
+ *
+ * A simple LED cycle routine
+ *
+ * Copyright (C) 2022  Paul Honig <paul@prinf.nl>
+ * SPDX-License-Identifier: CERN-OHL-P-2.0
+ */
 `default_nettype none
 
 module cycle #(
@@ -18,7 +27,6 @@ module cycle #(
   reg r_led;
 
   wire [10:0] w_count_cur;
-
 
   /*
    * Speed devider

@@ -4,9 +4,9 @@
  *
  * vim: ts=4 sw=4
  *
- * Top-level module for MCH2022 self test bitstream
+ * Top-level module for MCH2022 SPI to RGB LED project
  *
- * Copyright (C) 2022  Sylvain Munaut <tnt@246tNt.com>
+ * Copyright (C) 2022  Paul Honig <paul@printf.nl>
  * SPDX-License-Identifier: CERN-OHL-P-2.0
  */
 
@@ -50,17 +50,15 @@ module top (
     input  wire       clk_in
 );
     wire clk;
-    wire pll_lock;
     wire rst;
 
     // Release reset when pll has locked
-    assign rst = ~pll_lock;
 
     // Using a pll to create a desired clock
     pll pll_inst (
         .i_clk(clk_in),
         .o_clk(clk),
-        .o_lock(pll_lock)
+        .o_rst(rst)
     );
 
     // RGB LED wrapper
