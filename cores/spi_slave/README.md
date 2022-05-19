@@ -9,7 +9,7 @@ from a host connected through SPI (for instance using the same FTDI/other
 chip that's used for the configuration of the FPGA itself).
 
 Communication is highly optimized for the host -> fpga direction and
-the backchannel is _very_ limited, only a single status byte.
+the back channel is _very_ limited, only a single status byte.
 
 Two version exist, a 'fast' version and a 'simple' version that are
 described below. There is also an helper `spi_reg` core that 
@@ -35,11 +35,11 @@ is done using the actual SPI clock signal and thus allowing much higher
 SPI clock rates than the system clock itself.
 
 The downside is that to ensure proper IO timings, some of the logic elements
-have to be manually instanciated and manually placed. This makes this core
+have to be manually instantiated and manually placed. This makes this core
 harder to understand and also limits it to only work on the Ultra Plus 5k
 device when using the exact pins used for the FPGA configuration.
 
-```
+```pcf
 set_io -nowarn slave_mosi 14
 set_io -nowarn slave_miso 17
 set_io -nowarn slave_cs_n 11
@@ -63,7 +63,7 @@ status byte.
 
 On the FPGA side, the SPI transaction is converted to a 8 bit parallel bus
 with a validity strobe along with indicators wether this is the first/last
-byte of a burst. Burts being defined as CS falling/rising.
+byte of a burst. Bursts being defined as CS falling/rising.
 
 ![SPI local bus protocol](doc/bus.png)
 
@@ -71,4 +71,4 @@ byte of a burst. Burts being defined as CS falling/rising.
 License
 -------
 
-These cores are licensed under the BSD 3-clause licence (see LICENSE.bsd)
+These cores are licensed under the BSD 3-clause license (see LICENSE.bsd)
