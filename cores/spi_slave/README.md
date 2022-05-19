@@ -15,4 +15,7 @@ the backchannel is limited.
 License
 -------
 
-These cores are licensed under the BSD 3-clause licence (see LICENSE.bsd)
+The cores in this repository are licensed under the
+"CERN Open Hardware Licence Version 2 - Permissive" license.
+
+See LICENSE file for full text.
