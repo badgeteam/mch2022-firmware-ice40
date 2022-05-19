@@ -14,7 +14,8 @@ module spi_fast_core_tb;
 
 	// Signals
 	reg rst = 1'b1;
-	reg clk = 1'b0;
+	reg clk_slow = 1'b0;
+	reg clk_fast = 1'b0;
 
 	wire spi_mosi;
 	wire spi_miso;
@@ -24,7 +25,7 @@ module spi_fast_core_tb;
 	wire [7:0] user_out;
 	wire user_out_stb;
 
-	wire [7:0] user_in;
+	reg  [7:0] user_in;
 	wire user_in_ack;
 
 	wire csn_state;
@@ -44,50 +45,71 @@ module spi_fast_core_tb;
 	end
 
 	// Clocks
-	always #10 clk = !clk;
+	always #16.66 clk_slow = !clk_slow; // ~  30 MHz (sys_clk)
+	always #3.125 clk_fast = !clk_fast; // ~ 160 MHz (2*spi_clk)
 
 	// DUT
 	spi_fast_core spi_I (
-		.spi_mosi(spi_mosi),
-		.spi_miso(spi_miso),
-		.spi_cs_n(spi_cs_n),
-		.spi_clk(spi_clk),
-		.user_out(user_out),
-		.user_out_stb(user_out_stb),
-		.user_in(user_in),
-		.user_in_ack(user_in_ack),
-		.csn_state(csn_state),
-		.csn_rise(csn_rise),
-		.csn_fall(csn_fall),
-		.clk(clk),
-		.rst(rst)
+		.spi_mosi     (spi_mosi),
+		.spi_miso     (spi_miso),
+		.spi_cs_n     (spi_cs_n),
+		.spi_clk      (spi_clk),
+		.user_out     (user_out),
+		.user_out_stb (user_out_stb),
+		.user_in      (user_in),
+		.user_in_ack  (user_in_ack),
+		.csn_state    (csn_state),
+		.csn_rise     (csn_rise),
+		.csn_fall     (csn_fall),
+		.clk          (clk_slow),
+		.rst          (rst)
 	);
 
 	// Dummy TX
-	assign user_in = 8'hBA;
+	always @(posedge clk_slow)
+		if (csn_state)
+			user_in <= 8'hA5;
+		else if (user_in_ack)
+			user_in <= user_in + 1;
 
 	// SPI data generation
-	reg [71:0] spi_csn_data = 72'b11110000000000000000000000000000000000000000000000000001111;
-	reg [71:0] spi_clk_data = 72'b00000010101010101010101010101010101010101010101010101000000;
-	reg [71:0] spi_dat_data = 72'b00000110011000011001111110000000000111111000000001100000000;
+	reg [71:0] spi_csn_data = 72'b111100000000000000000000000000000000000000000000000000011111111111111111;
+	reg [71:0] spi_clk_data = 72'b000000101010101010101010101010101010101010101010101010000000000000000000;
+	reg [71:0] spi_dat_data = 72'b000001100110000110011111100000000001111110000000011000000000000000000000;
 
-	reg [4:0] div;
-
-	always @(posedge clk)
-		if (rst)
-			div <= 0;
-		else
-			div <= div + 1;
-
-	always @(posedge clk)
-		if (1 || div == 4'hf) begin
+	always @(posedge clk_fast)
+	begin
+		if (~rst) begin
 			spi_csn_data <= { spi_csn_data[70:0], spi_csn_data[71] };
 			spi_clk_data <= { spi_clk_data[70:0], spi_clk_data[71] };
 			spi_dat_data <= { spi_dat_data[70:0], spi_dat_data[71] };
 		end
+	end
 
 	assign spi_mosi = spi_dat_data[70];
 	assign spi_cs_n = spi_csn_data[70];
 	assign spi_clk  = spi_clk_data[70];
+
+	// Print and validate output
+	reg  [1:0] out_cnt;
+	reg [23:0] out_val = 24'hc2c1a5;
+
+	always @(posedge clk_slow)
+	begin
+		if (csn_fall) begin
+			$write("\nRX:");
+			out_cnt = 0;
+		end
+
+		if (user_out_stb) begin
+			$write(" %02x", user_out);
+			if (user_out != out_val[out_cnt*8+:8])
+				$error("\nInvalid data\n");
+			out_cnt = out_cnt + 1;
+		end
+
+		if (out_cnt == 4)
+			$error("\nToo many data\n");
+	end
 
 endmodule // spi_fast_core_tb
