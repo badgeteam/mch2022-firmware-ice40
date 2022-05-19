@@ -6,7 +6,7 @@ from pyftdi.spi import SpiController
 
 def main():
 	spi_addr = 'ftdi://ftdi:2232h/1'
-	spi_frequency = 60e6
+	spi_frequency = 30e6
 	spi_cs = 2
 
 	spi = SpiController(cs_count=3)
