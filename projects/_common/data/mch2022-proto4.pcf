@@ -18,7 +18,7 @@ set_io -nowarn -pullup no  spi_mosi    17
 set_io -nowarn -pullup no  spi_miso    14
 set_io -nowarn -pullup no  spi_clk     15
 set_io -nowarn -pullup yes spi_cs_n    16
-set_frequency spi_clk 60
+set_frequency spi_clk 80
 
 # PSRAM
 set_io -nowarn -pullup no  ram_io[0]   21
