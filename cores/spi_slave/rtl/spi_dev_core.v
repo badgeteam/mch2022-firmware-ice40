@@ -1,5 +1,5 @@
 /*
- * spi_fast_core.v
+ * spi_dev_core.v
  *
  * vim: ts=4 sw=4
  *
@@ -9,7 +9,7 @@
 
 `default_nettype none
 
-module spi_fast_core (
+module spi_dev_core (
 	// SPI interface
 	output wire spi_miso,
 	input  wire spi_mosi,
@@ -107,7 +107,7 @@ module spi_fast_core (
 	// Shift register
 	assign shift_in = bit_cnt_last ? out_reg : { shift_reg[6:0], spi_mosi_in };
 
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X23/Y1")
 	) shift_I (
 		.d(shift_in),
@@ -120,7 +120,7 @@ module spi_fast_core (
 	// Save register
 	assign save_in = { shift_reg[6:0], spi_mosi_in };
 
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X24/Y1")
 	) save_I (
 		.d(save_in),
@@ -187,7 +187,7 @@ module spi_fast_core (
 	);
 
 	// Input Capture register
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X24/Y2")
 	) in_cap_I (
 		.d(save_reg),
@@ -198,7 +198,7 @@ module spi_fast_core (
 	);
 
 	// Output Cross register
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X22/Y1")
 	) out_cross_I (
 		.d(user_in),
@@ -231,10 +231,10 @@ module spi_fast_core (
 	// Send data to user
 	assign user_out = cap_reg;
 
-endmodule // spi_fast_core
+endmodule // spi_dev_core
 
 
-module spi_fast_reg8 #(
+module spi_dev_reg8 #(
 	parameter BEL = "X0/Y0"
 )(
 	input  wire [7:0] d,
@@ -308,4 +308,4 @@ module spi_fast_reg8 #(
 		.C(clk)
 	);
 
-endmodule // spi_fast_reg8
+endmodule // spi_dev_reg8

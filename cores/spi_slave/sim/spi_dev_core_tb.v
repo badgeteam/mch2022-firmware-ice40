@@ -1,5 +1,5 @@
 /*
- * spi_fast_core_tb.v
+ * spi_dev_core_tb.v
  *
  * vim: ts=4 sw=4
  *
@@ -10,7 +10,7 @@
 `default_nettype none
 `timescale 1ns / 100ps
 
-module spi_fast_core_tb;
+module spi_dev_core_tb;
 
 	// Signals
 	reg rst = 1'b1;
@@ -34,8 +34,8 @@ module spi_fast_core_tb;
 
 	// Setup recording
 	initial begin
-		$dumpfile("spi_fast_core_tb.vcd");
-		$dumpvars(0,spi_fast_core_tb);
+		$dumpfile("spi_dev_core_tb.vcd");
+		$dumpvars(0,spi_dev_core_tb);
 	end
 
 	// Reset pulse
@@ -49,7 +49,7 @@ module spi_fast_core_tb;
 	always #3.125 clk_fast = !clk_fast; // ~ 160 MHz (2*spi_clk)
 
 	// DUT
-	spi_fast_core spi_I (
+	spi_dev_core spi_I (
 		.spi_mosi     (spi_mosi),
 		.spi_miso     (spi_miso),
 		.spi_cs_n     (spi_cs_n),
@@ -112,4 +112,4 @@ module spi_fast_core_tb;
 			$error("\nToo many data\n");
 	end
 
-endmodule // spi_fast_core_tb
+endmodule // spi_dev_core_tb

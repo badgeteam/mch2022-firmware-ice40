@@ -51,7 +51,7 @@ module spi_loopback (
 	// Core
 	// ----
 
-	spi_fast_core core_I (
+	spi_dev_core core_I (
 		.spi_miso        (spi_miso),
 		.spi_mosi        (spi_mosi),
 		.spi_clk         (spi_clk),
