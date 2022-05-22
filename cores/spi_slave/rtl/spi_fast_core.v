@@ -49,8 +49,6 @@ module spi_fast_core (
 
 	reg xfer_toggle = 1'b0;	// init only for simulation
 
-	reg  spi_miso_mask;
-
 	// User clock domain
 	wire [1:0] xfer_sync;
 	wire xfer_now;
@@ -115,6 +113,7 @@ module spi_fast_core (
 		.d(shift_in),
 		.q(shift_reg),
 		.ce(1'b1),
+		.rst(spi_cs_n),
 		.clk(spi_clk_buf)
 	);
 
@@ -127,31 +126,17 @@ module spi_fast_core (
 		.d(save_in),
 		.q(save_reg),
 		.ce(bit_cnt_last),
+		.rst(1'b0),
 		.clk(spi_clk_buf)
 	);
 
 	// Transfer Toggle register
 	always @(posedge spi_clk_buf)
-		xfer_toggle <= xfer_toggle ^ bit_cnt_last;
+		xfer_toggle <= xfer_toggle ^ (bit_cnt[2:0] == 3'b111);
 
 	// Output
 	assign spi_miso_oe = ~spi_cs_n;
-
-	(* dont_touch="true", BEL="X23/Y2/lc7" *) SB_LUT4 #(
-		.LUT_INIT(16'h0008)
-	) miso_mux_I (
-		.I0(shift_reg[7]),
-		.I1(spi_miso_mask),
-		.I2(1'b0),
-		.I3(1'b0),
-		.O(spi_miso_out)
-	);
-
-	always @(posedge spi_clk_buf or posedge spi_cs_n)
-		if (spi_cs_n)
-			spi_miso_mask <= 1'b0;
-		else
-			spi_miso_mask <= spi_miso_mask | bit_cnt_last;
+	assign spi_miso_out = shift_reg[7];
 
 
 	// User clock domain
@@ -208,6 +193,7 @@ module spi_fast_core (
 		.d(save_reg),
 		.q(cap_reg),
 		.ce(cap_ce),
+		.rst(1'b0),
 		.clk(clk)
 	);
 
@@ -218,6 +204,7 @@ module spi_fast_core (
 		.d(user_in),
 		.q(out_reg),
 		.ce(out_ce),
+		.rst(1'b0),
 		.clk(clk)
 	);
 
@@ -253,62 +240,71 @@ module spi_fast_reg8 #(
 	input  wire [7:0] d,
 	output wire [7:0] q,
 	input  wire ce,
-	input wire clk
+	input  wire rst,
+	input  wire clk
 );
 
-	(* dont_touch="true", BEL={BEL, "/lc0"} *) SB_DFFE dffe_0 (
+	(* dont_touch="true", BEL={BEL, "/lc0"} *) SB_DFFER dffe_0 (
 		.D(d[0]),
 		.Q(q[0]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc1"} *) SB_DFFE dffe_1 (
+	(* dont_touch="true", BEL={BEL, "/lc1"} *) SB_DFFER dffe_1 (
 		.D(d[1]),
 		.Q(q[1]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc2"} *) SB_DFFE dffe_2 (
+	(* dont_touch="true", BEL={BEL, "/lc2"} *) SB_DFFER dffe_2 (
 		.D(d[2]),
 		.Q(q[2]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc3"} *) SB_DFFE dffe_3 (
+	(* dont_touch="true", BEL={BEL, "/lc3"} *) SB_DFFER dffe_3 (
 		.D(d[3]),
 		.Q(q[3]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc4"} *) SB_DFFE dffe_4 (
+	(* dont_touch="true", BEL={BEL, "/lc4"} *) SB_DFFER dffe_4 (
 		.D(d[4]),
 		.Q(q[4]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc5"} *) SB_DFFE dffe_5 (
+	(* dont_touch="true", BEL={BEL, "/lc5"} *) SB_DFFER dffe_5 (
 		.D(d[5]),
 		.Q(q[5]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc6"} *) SB_DFFE dffe_6 (
+	(* dont_touch="true", BEL={BEL, "/lc6"} *) SB_DFFER dffe_6 (
 		.D(d[6]),
 		.Q(q[6]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc7"} *) SB_DFFE dffe_7 (
+	(* dont_touch="true", BEL={BEL, "/lc7"} *) SB_DFFER dffe_7 (
 		.D(d[7]),
 		.Q(q[7]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
