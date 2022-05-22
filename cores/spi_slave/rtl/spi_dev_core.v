@@ -19,7 +19,6 @@ module spi_dev_core (
 	// User interface
 	output wire [7:0] user_out,
 	output reg  user_out_stb,
-	output wire user_out_prestb,
 
 	input  wire [7:0] user_in,
 	output reg  user_in_ack,
@@ -214,8 +213,6 @@ module spi_dev_core (
 
 	always @(posedge clk)
 		user_out_stb <= xfer_now;
-
-	assign user_out_prestb = xfer_now;
 
 		// Save user data and send to SPI
 	assign out_ce = xfer_now | csn_fall_i;

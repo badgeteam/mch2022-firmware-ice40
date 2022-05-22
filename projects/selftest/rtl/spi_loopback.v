@@ -29,7 +29,6 @@ module spi_loopback (
 	// SPI Core
 	wire [7:0] user_out;
 	wire       user_out_stb;
-	wire       user_out_prestb;
 
 	wire [7:0] user_in;
 	wire       user_in_ack;
@@ -58,7 +57,6 @@ module spi_loopback (
 		.spi_cs_n        (spi_cs_n),
 		.user_out        (user_out),
 		.user_out_stb    (user_out_stb),
-		.user_out_prestb (user_out_prestb),
 		.user_in         (user_in),
 		.user_in_ack     (user_in_ack),
 		.csn_state       (csn_state),
