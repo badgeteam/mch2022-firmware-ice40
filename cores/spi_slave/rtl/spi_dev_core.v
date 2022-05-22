@@ -1,57 +1,34 @@
 /*
- * spi_fast_core.v
+ * spi_dev_core.v
  *
  * vim: ts=4 sw=4
  *
- * Copyright (C) 2019  Sylvain Munaut <tnt@246tNt.com>
- * All rights reserved.
- *
- * BSD 3-clause, see LICENSE.bsd
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the <organization> nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Copyright (C) 2019-2022  Sylvain Munaut <tnt@246tNt.com>
+ * SPDX-License-Identifier: CERN-OHL-P-2.0
  */
 
 `default_nettype none
 
-module spi_fast_core (
+module spi_dev_core (
 	// SPI interface
 	output wire spi_miso,
 	input  wire spi_mosi,
 	input  wire spi_clk,
 	input  wire spi_cs_n,
 
-	// User interface
-	output wire [7:0] user_out,
-	output reg  user_out_stb,
-	output wire user_out_prestb,
+	// User data interface
+	output wire [7:0] usr_mosi_data,
+	output reg        usr_mosi_stb,
 
-	input  wire [7:0] user_in,
-	output reg  user_in_ack,
+	input  wire [7:0] usr_miso_data,
+	output reg        usr_miso_ack,
 
+	// CS_n line (resynched to user clock domain)
 	output wire csn_state,
 	output wire csn_rise,
 	output wire csn_fall,
 
+	// Clock / Reset
 	input  wire clk,
 	input  wire rst
 );
@@ -72,8 +49,6 @@ module spi_fast_core (
 	wire [7:0] save_reg;
 
 	reg xfer_toggle = 1'b0;	// init only for simulation
-
-	reg  spi_miso_mask;
 
 	// User clock domain
 	wire [1:0] xfer_sync;
@@ -133,49 +108,36 @@ module spi_fast_core (
 	// Shift register
 	assign shift_in = bit_cnt_last ? out_reg : { shift_reg[6:0], spi_mosi_in };
 
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X23/Y1")
 	) shift_I (
 		.d(shift_in),
 		.q(shift_reg),
 		.ce(1'b1),
+		.rst(spi_cs_n),
 		.clk(spi_clk_buf)
 	);
 
 	// Save register
 	assign save_in = { shift_reg[6:0], spi_mosi_in };
 
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X24/Y1")
 	) save_I (
 		.d(save_in),
 		.q(save_reg),
 		.ce(bit_cnt_last),
+		.rst(1'b0),
 		.clk(spi_clk_buf)
 	);
 
 	// Transfer Toggle register
 	always @(posedge spi_clk_buf)
-		xfer_toggle <= xfer_toggle ^ bit_cnt_last;
+		xfer_toggle <= xfer_toggle ^ (bit_cnt[2:0] == 3'b111);
 
 	// Output
 	assign spi_miso_oe = ~spi_cs_n;
-
-	(* dont_touch="true", BEL="X23/Y2/lc7" *) SB_LUT4 #(
-		.LUT_INIT(16'h0008)
-	) miso_mux_I (
-		.I0(shift_reg[7]),
-		.I1(spi_miso_mask),
-		.I2(1'b0),
-		.I3(1'b0),
-		.O(spi_miso_out)
-	);
-
-	always @(posedge spi_clk_buf or posedge spi_cs_n)
-		if (spi_cs_n)
-			spi_miso_mask <= 1'b0;
-		else
-			spi_miso_mask <= spi_miso_mask | bit_cnt_last;
+	assign spi_miso_out = shift_reg[7];
 
 
 	// User clock domain
@@ -226,22 +188,24 @@ module spi_fast_core (
 	);
 
 	// Input Capture register
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X24/Y2")
 	) in_cap_I (
 		.d(save_reg),
 		.q(cap_reg),
 		.ce(cap_ce),
+		.rst(1'b0),
 		.clk(clk)
 	);
 
 	// Output Cross register
-	spi_fast_reg8 #(
+	spi_dev_reg8 #(
 		.BEL("X22/Y1")
 	) out_cross_I (
-		.d(user_in),
+		.d(usr_miso_data),
 		.q(out_reg),
 		.ce(out_ce),
+		.rst(1'b0),
 		.clk(clk)
 	);
 
@@ -250,15 +214,13 @@ module spi_fast_core (
 	assign cap_ce = xfer_now;
 
 	always @(posedge clk)
-		user_out_stb <= xfer_now;
-
-	assign user_out_prestb = xfer_now;
+		usr_mosi_stb <= xfer_now;
 
 		// Save user data and send to SPI
 	assign out_ce = xfer_now | csn_fall_i;
 
 	always @(posedge clk)
-		user_in_ack <= xfer_now | csn_fall_i;
+		usr_miso_ack <= xfer_now | csn_fall_i;
 
 	// Send CS_n status to user
 	assign csn_state = csn_state_i;
@@ -266,74 +228,83 @@ module spi_fast_core (
 	assign csn_fall  = csn_fall_i;
 
 	// Send data to user
-	assign user_out = cap_reg;
+	assign usr_mosi_data = cap_reg;
 
-endmodule // spi_fast_core
+endmodule // spi_dev_core
 
 
-module spi_fast_reg8 #(
+module spi_dev_reg8 #(
 	parameter BEL = "X0/Y0"
 )(
 	input  wire [7:0] d,
 	output wire [7:0] q,
 	input  wire ce,
-	input wire clk
+	input  wire rst,
+	input  wire clk
 );
 
-	(* dont_touch="true", BEL={BEL, "/lc0"} *) SB_DFFE dffe_0 (
+	(* dont_touch="true", BEL={BEL, "/lc0"} *) SB_DFFER dffe_0 (
 		.D(d[0]),
 		.Q(q[0]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc1"} *) SB_DFFE dffe_1 (
+	(* dont_touch="true", BEL={BEL, "/lc1"} *) SB_DFFER dffe_1 (
 		.D(d[1]),
 		.Q(q[1]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc2"} *) SB_DFFE dffe_2 (
+	(* dont_touch="true", BEL={BEL, "/lc2"} *) SB_DFFER dffe_2 (
 		.D(d[2]),
 		.Q(q[2]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc3"} *) SB_DFFE dffe_3 (
+	(* dont_touch="true", BEL={BEL, "/lc3"} *) SB_DFFER dffe_3 (
 		.D(d[3]),
 		.Q(q[3]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc4"} *) SB_DFFE dffe_4 (
+	(* dont_touch="true", BEL={BEL, "/lc4"} *) SB_DFFER dffe_4 (
 		.D(d[4]),
 		.Q(q[4]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc5"} *) SB_DFFE dffe_5 (
+	(* dont_touch="true", BEL={BEL, "/lc5"} *) SB_DFFER dffe_5 (
 		.D(d[5]),
 		.Q(q[5]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc6"} *) SB_DFFE dffe_6 (
+	(* dont_touch="true", BEL={BEL, "/lc6"} *) SB_DFFER dffe_6 (
 		.D(d[6]),
 		.Q(q[6]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-	(* dont_touch="true", BEL={BEL, "/lc7"} *) SB_DFFE dffe_7 (
+	(* dont_touch="true", BEL={BEL, "/lc7"} *) SB_DFFER dffe_7 (
 		.D(d[7]),
 		.Q(q[7]),
 		.E(ce),
+		.R(rst),
 		.C(clk)
 	);
 
-endmodule // spi_fast_reg8
+endmodule // spi_dev_reg8

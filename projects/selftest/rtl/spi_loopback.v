@@ -27,12 +27,11 @@ module spi_loopback (
 	// -------
 
 	// SPI Core
-	wire [7:0] user_out;
-	wire       user_out_stb;
-	wire       user_out_prestb;
+	wire [7:0] usr_mosi_data;
+	wire       usr_mosi_stb;
 
-	wire [7:0] user_in;
-	wire       user_in_ack;
+	wire [7:0] usr_miso_data;
+	wire       usr_miso_ack;
 
 	wire       csn_state;
 	wire       csn_rise;
@@ -51,16 +50,15 @@ module spi_loopback (
 	// Core
 	// ----
 
-	spi_fast_core core_I (
+	spi_dev_core core_I (
 		.spi_miso        (spi_miso),
 		.spi_mosi        (spi_mosi),
 		.spi_clk         (spi_clk),
 		.spi_cs_n        (spi_cs_n),
-		.user_out        (user_out),
-		.user_out_stb    (user_out_stb),
-		.user_out_prestb (user_out_prestb),
-		.user_in         (user_in),
-		.user_in_ack     (user_in_ack),
+		.usr_mosi_data   (usr_mosi_data),
+		.usr_mosi_stb    (usr_mosi_stb),
+		.usr_miso_data   (usr_miso_data),
+		.usr_miso_ack    (usr_miso_ack),
 		.csn_state       (csn_state),
 		.csn_rise        (csn_rise),
 		.csn_fall        (csn_fall),
@@ -77,10 +75,10 @@ module spi_loopback (
 		if (csn_state)
 			mw_addr <= 0;
 		else
-			mw_addr <= mw_addr + user_out_stb;
+			mw_addr <= mw_addr + usr_mosi_stb;
 	
-	assign mw_data = user_out;
-	assign mw_ena  = user_out_stb;
+	assign mw_data = usr_mosi_data;
+	assign mw_ena  = usr_mosi_stb;
 
 	// Memory instance
 	ram_sdp #(
@@ -101,9 +99,9 @@ module spi_loopback (
 		if (csn_state)
 			mr_addr <= 0;
 		else
-			mr_addr <= mr_addr + user_in_ack;
+			mr_addr <= mr_addr + usr_miso_ack;
 
-	assign user_in = mr_data;
+	assign usr_miso_data = mr_data;
 	assign mr_ena = 1'b1;
 
 endmodule // spi_loopback

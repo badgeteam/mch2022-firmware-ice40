@@ -42,7 +42,7 @@ include ../../build/project-rules.mk
 
 # Custom rules
 $(BUILD_TMP)/boot.hex:
-	icebram -g -s 0 32 1024 > $@
+	icebram -g -s 0 32 2048 > $@
 
 fw/fw_app.hex:
 	make -C fw fw_app.hex

@@ -3,10 +3,6 @@
  *
  * vim: ts=4 sw=4
  *
- * CRG generating:
- *  - clk_1x  -  30 MHz for main logic
- *  - clk_4x  - 120 MHz for QPI memory
- *
  * Copyright (C) 2022  Sylvain Munaut <tnt@246tNt.com>
  * SPDX-License-Identifier: CERN-OHL-P-2.0
  */
@@ -18,9 +14,7 @@ module sysmgr (
 	input  wire clk_in,
 
 	// System
-	output wire clk_1x,
-	output wire clk_4x,
-	output wire sync_4x,
+	output wire clk,
 	output wire rst
 );
 
@@ -43,35 +37,18 @@ module sysmgr (
 		.FEEDBACK_PATH       ("SIMPLE"),
 		.DIVR                (4'b0000),
 		.DIVF                (7'b1001111),
-		.DIVQ                (3'b011),
+		.DIVQ                (3'b101),
 		.FILTER_RANGE        (3'b001),
-		.PLLOUT_SELECT_PORTA ("GENCLK"),
-		.PLLOUT_SELECT_PORTB ("SHIFTREG_0deg")
+		.PLLOUT_SELECT_PORTA ("GENCLK")
 	) pll_I (
 		.PACKAGEPIN    (clk_in),
-		.PLLOUTGLOBALA (clk_4x),
-		.PLLOUTGLOBALB (clk_1x),
+		.PLLOUTGLOBALA (clk),
 		.RESETB        (1'b1),
 		.LOCK          (pll_lock)
 	);
 
-	// SERDES sync signal
-	ice40_serdes_sync #(
-		.PHASE      (2),
-		.NEG_EDGE   (0),
-		.GLOBAL_BUF (0),
-		.LOCAL_BUF  (0),
-		.BEL_COL    ("X21"),
-		.BEL_ROW    ("Y4")
-	) sync_4x_I (
-		.clk_slow (clk_1x),
-		.clk_fast (clk_4x),
-		.rst      (rst),
-		.sync     (sync_4x)
-	);
-
 	// Reset generation
-	always @(posedge clk_1x or negedge pll_lock)
+	always @(posedge clk or negedge pll_lock)
 		if (~pll_lock)
 			rst_cnt <= 4'h8;
 		else if (rst_i)

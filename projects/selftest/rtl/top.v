@@ -302,7 +302,7 @@ module top (
 
 	// PHY
 	lcd_phy #(
-		.SPEED(0)
+		.SPEED(1)
 	) lcd_phy_I (
 		.lcd_d         (lcd_d),
 		.lcd_rs        (lcd_rs),
