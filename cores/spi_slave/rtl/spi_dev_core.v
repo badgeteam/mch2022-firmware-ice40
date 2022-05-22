@@ -16,17 +16,19 @@ module spi_dev_core (
 	input  wire spi_clk,
 	input  wire spi_cs_n,
 
-	// User interface
-	output wire [7:0] user_out,
-	output reg  user_out_stb,
+	// User data interface
+	output wire [7:0] usr_mosi_data,
+	output reg        usr_mosi_stb,
 
-	input  wire [7:0] user_in,
-	output reg  user_in_ack,
+	input  wire [7:0] usr_miso_data,
+	output reg        usr_miso_ack,
 
+	// CS_n line (resynched to user clock domain)
 	output wire csn_state,
 	output wire csn_rise,
 	output wire csn_fall,
 
+	// Clock / Reset
 	input  wire clk,
 	input  wire rst
 );
@@ -200,7 +202,7 @@ module spi_dev_core (
 	spi_dev_reg8 #(
 		.BEL("X22/Y1")
 	) out_cross_I (
-		.d(user_in),
+		.d(usr_miso_data),
 		.q(out_reg),
 		.ce(out_ce),
 		.rst(1'b0),
@@ -212,13 +214,13 @@ module spi_dev_core (
 	assign cap_ce = xfer_now;
 
 	always @(posedge clk)
-		user_out_stb <= xfer_now;
+		usr_mosi_stb <= xfer_now;
 
 		// Save user data and send to SPI
 	assign out_ce = xfer_now | csn_fall_i;
 
 	always @(posedge clk)
-		user_in_ack <= xfer_now | csn_fall_i;
+		usr_miso_ack <= xfer_now | csn_fall_i;
 
 	// Send CS_n status to user
 	assign csn_state = csn_state_i;
@@ -226,7 +228,7 @@ module spi_dev_core (
 	assign csn_fall  = csn_fall_i;
 
 	// Send data to user
-	assign user_out = cap_reg;
+	assign usr_mosi_data = cap_reg;
 
 endmodule // spi_dev_core
 

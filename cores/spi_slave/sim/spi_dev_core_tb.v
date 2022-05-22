@@ -22,11 +22,11 @@ module spi_dev_core_tb;
 	wire spi_cs_n;
 	wire spi_clk;
 
-	wire [7:0] user_out;
-	wire user_out_stb;
+	wire [7:0] usr_mosi_data;
+	wire       usr_mosi_stb;
 
-	reg  [7:0] user_in;
-	wire user_in_ack;
+	reg  [7:0] usr_miso_data;
+	wire       usr_miso_ack;
 
 	wire csn_state;
 	wire csn_rise;
@@ -54,10 +54,10 @@ module spi_dev_core_tb;
 		.spi_miso     (spi_miso),
 		.spi_cs_n     (spi_cs_n),
 		.spi_clk      (spi_clk),
-		.user_out     (user_out),
-		.user_out_stb (user_out_stb),
-		.user_in      (user_in),
-		.user_in_ack  (user_in_ack),
+		.usr_mosi_data(usr_mosi_data),
+		.usr_mosi_stb (usr_mosi_stb),
+		.usr_miso_data(usr_miso_data),
+		.usr_miso_ack (usr_miso_ack),
 		.csn_state    (csn_state),
 		.csn_rise     (csn_rise),
 		.csn_fall     (csn_fall),
@@ -68,9 +68,9 @@ module spi_dev_core_tb;
 	// Dummy TX
 	always @(posedge clk_slow)
 		if (csn_state)
-			user_in <= 8'hA5;
-		else if (user_in_ack)
-			user_in <= user_in + 1;
+			usr_miso_data <= 8'hA5;
+		else if (usr_miso_ack)
+			usr_miso_data <= usr_miso_data + 1;
 
 	// SPI data generation
 	reg [71:0] spi_csn_data = 72'b111100000000000000000000000000000000000000000000000000000001111111111111;
@@ -101,9 +101,9 @@ module spi_dev_core_tb;
 			out_cnt = 0;
 		end
 
-		if (user_out_stb) begin
-			$write(" %02x", user_out);
-			if (user_out != out_val[out_cnt*8+:8])
+		if (usr_mosi_stb) begin
+			$write(" %02x", usr_mosi_data);
+			if (usr_mosi_data != out_val[out_cnt*8+:8])
 				$error("\nInvalid data\n");
 			out_cnt = out_cnt + 1;
 		end
