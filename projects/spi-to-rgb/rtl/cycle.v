@@ -46,15 +46,16 @@ module cycle #(
 
   wire [8:0] phase_new = phase + r_count_out;
 
+  always @(posedge i_clk) begin
+    // PWM the led
+    phase <= phase_new[7:0];
+    r_led <= phase_new[8];
+  end
+
   // count_cur up and down
   always @(posedge i_clk) begin
     // Update counters every X cycles
     if (r_count_speed == 0) begin
-
-      // PWM the led
-      phase <= phase_new[7:0];
-      r_led <= phase_new[8];
-
       /**
        * Create the shape that cycles the colors
        *   __
