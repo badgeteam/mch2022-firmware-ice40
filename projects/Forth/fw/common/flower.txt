@@ -1,0 +1,42 @@
+\ -------------------------------------------------------------
+\  Minsky flower
+\ -------------------------------------------------------------
+
+$B619 constant aint
+$6ED9 constant bint
+
+0 variable end-x
+0 variable end-y
+
+: paintcycle ( x-start y-start -- )
+
+  2dup end-y ! end-x !
+
+  begin
+    ( x y )
+
+    swap over ( y   x   y  ) 2 lshift aint m* nip 1+ 2/ + ( y  x' )
+    swap over ( x'  y   x' ) 2 lshift bint m* nip 1+ 2/ + ( x' y' )
+    swap over ( y'  x'  y' ) 2 lshift aint m* nip 1+ 2/ + ( y' x'' )
+
+    swap ( x'' y' )
+
+    over 128 + over 128 + putpixel
+
+    over end-x @ =
+    over end-y @ = and
+  until
+
+  2drop
+;
+
+\ ------------------------------------------------------------------------------
+
+: flower ( -- )
+
+    -64 -57 paintcycle \ 2028
+    -51  -7 paintcycle \ 676
+    -64 -36 paintcycle \ 510
+
+  \ -51 -30 paintcycle \ 132
+;

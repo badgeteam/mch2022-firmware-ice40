@@ -1,0 +1,206 @@
+\ -----------------------------------------------------------
+\   Cooperative Multitasking
+\ -----------------------------------------------------------
+
+\ Configuration:
+
+32 cells constant stackspace \ 32 stack elements for every task
+
+\ Internal stucture of task memory:
+\    0: Pointer to next task
+\    2: Task currently active ?
+\    4: Saved data stack depth
+\    6: Parameter stack space
+\  n+6: Saved return stack depth
+\  n+8: Return stack space
+\ 2n+8: Complete size of data structure.
+
+create boot-task
+  here , \ Boot Task
+  true , \   is active.
+     0 , \ Saved depth: 0
+  stackspace allot
+     0 , \ Saved rdepth: 0
+  stackspace allot
+
+boot-task variable up \ User Pointer
+: next-task   ( -- task )    up @ ;
+: task-state  ( -- state )   up @ 1 cells + ;
+: task-data   ( -- data )    up @ 2 cells + ;
+: task-return ( -- return )  up @ 3 cells stackspace + + ;
+
+: (pause) ( stacks fly around )
+
+  \ -----------------------------------------------------------
+
+  depth task-data !  \ Number of elements
+  task-data 2 + >r    \ Begin with top of stack
+
+  begin
+    depth
+  while
+    r@ !
+    r> 2 + >r
+  repeat
+
+  rdrop
+
+  \ -----------------------------------------------------------
+
+  rdepth task-return !  \ Number of elements
+  task-return 2 +        \ Begin with top of return stack
+
+  begin
+    rdepth
+  while
+    r> over !
+    2 +
+  repeat
+
+  drop
+
+  \ -----------------------------------------------------------
+
+  begin
+    next-task @ up !     \ Switch to next running task
+  task-state @ until
+
+  \ -----------------------------------------------------------
+
+     task-return @  \ Number of elements
+  2* task-return +   \ Begin with end of stack
+
+  begin
+    dup task-return <>
+  while
+    dup @ >r
+    2 -
+  repeat
+
+  drop
+
+
+  \ -----------------------------------------------------------
+
+     task-data @  \ Number of elements
+  2* task-data +   \ Begin with end of return stack
+  >r
+
+  begin
+    r@ task-data <>
+  while
+    r@ @
+    r> 2 - >r
+  repeat
+
+  rdrop
+
+  \ -----------------------------------------------------------
+;
+
+: wake ( task -- ) 1 cells +  true swap ! ; \ Wake a random task (IRQ safe)
+: idle ( task -- ) 1 cells + false swap ! ;  \ Idle a random task (IRQ safe)
+
+\ -------------------------------------------------------
+\  Round-robin list task handling - do not use in IRQ !
+\ -------------------------------------------------------
+
+: stop ( -- ) false task-state ! pause ; \ Stop current task
+: multitask  ( -- ) ['] (pause) 2/ ['] pause ! ;
+: singletask ( -- ) [']  nop    2/ ['] pause ! ;
+
+: task-in-list? ( task -- ? ) \ Checks if a task is currently inside of round-robin list (do not use in IRQ)
+  next-task
+  begin
+    ( Task-Address )
+    2dup = if 2drop true exit then
+    @ dup next-task = \ Stop when end of circular list is reached
+  until
+  2drop false
+;
+
+: previous ( task -- addr-of-task-before )
+  \ Find the task that has the desired one in its next field
+  >r next-task begin dup @ r@ <> while @ repeat rdrop
+;
+
+: insert ( task -- ) \ Insert a task into the round-robin list
+  dup task-in-list?  \ Is the desired task currently linked into ?
+  if drop else next-task @ over ! next-task ! then
+;
+
+: remove ( task -- ) \ Remove a task from the round-robin list
+  dup task-in-list?  \ Is the desired task currently linked into ?
+  if dup @ ( task next )
+     swap previous ( next previous ) !
+  else drop then
+;
+
+\ -----------------------------------------
+\ Create a new task - do not use in IRQ !
+\ -----------------------------------------
+
+: task: ( "name" -- )  create stackspace 2* 8 cells + allot ;
+
+: preparetask ( task continue -- )
+  swap >r ( continue R: task )
+
+    \ true  r@ 1 cells + ! \ Currently running
+         0  r@ 2 cells + ! \ Empty data stack
+         1  r@ 3 cells stackspace + + ! \ One element in return stack
+            r@ 4 cells stackspace + + ! \ Store the desired entry address at top of the tasks return stack
+
+  r> insert
+;
+
+: activate ( task --   R: continue -- )
+  true over 1 cells + ! \ Currently running
+  r> preparetask
+;
+
+: background ( task --   R: continue -- )
+  false over 1 cells + ! \ Currently idling
+  r> preparetask
+;
+
+\ --------------------------------------------------
+\  Multitasking insight
+\ --------------------------------------------------
+
+: task. ( Address -- )  \ If the address is known as a "literal exit" opcode sequence, it gets named.
+
+  $8000 or >r \ Transform address into literal opcode
+  forth @
+  begin
+    dup
+  while
+    dup 2 + count 127 and + aligned ( Dictionary Codestart )
+      dup @ r@ = swap 2 + @ $608C = and \ Check for "literal exit" opcode sequence
+      if dup 2 + count 127 and type space then
+    link@
+  repeat
+  drop rdrop
+;
+
+
+: tasks ( -- ) \ Show tasks currently in round-robin list
+  ['] pause @ singletask \ Stop multitasking as this list may be changed during printout.
+
+  \ Start with current task.
+  next-task cr
+
+  begin
+    ( Task-Address )
+    dup                          ." Task Address: " .x
+    dup                        @ ." Next Task: " .x
+    dup 1 cells              + @ ." State: " .x
+    dup 2 cells              + @ ." Stack depth: " .x
+    dup 3 cells stackspace + + @ ." Return depth: " .x
+    dup                          ." Name: " task. cr
+
+    @ dup next-task = \ Stop when end of circular list is reached
+  until
+  drop
+
+  ['] pause ! \ Restore old state of multitasking
+;
