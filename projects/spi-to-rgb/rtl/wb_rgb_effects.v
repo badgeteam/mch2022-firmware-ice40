@@ -7,10 +7,13 @@
  * SPDX-License-Identifier: CERN-OHL-P-2.0
  */
 
-`default_nettype none
+// Local define to make syntax checker happy
+`ifdef SIGASI_DEF
+`include "cells_sim.v"
+`endif
 
-module spi_rgb_effects #(
-)(
+`default_nettype none
+module wb_rgb_effects (
     // RGB routing 
     output wire  [2:0] rgb_leds_o,
 
@@ -29,10 +32,8 @@ module spi_rgb_effects #(
 
     // Signals
     // -------
-    reg         func_reg_o;
     reg  [31:0] func_reg_data;
-    reg         rgb_o;
-    reg  [31:0] rgb_data;
+    reg  [31:0] ctrl_reg_data;
 
     reg         driver_enable;
     reg         cycle_enable;
@@ -40,10 +41,10 @@ module spi_rgb_effects #(
 
     // Bus IF
     wire bus_clr;
-    reg  bus_we_gpio_oe;
-    reg  bus_we_gpio_o;
+    reg  bus_we_func_reg_o;
+    reg  bus_we_rgb_o;
 
-    wire [2:0] rgb_leds_d;
+    reg  [2:0] rgb_leds_d;
     wire [2:0] rgb_leds_c;
     wire [2:0] rgb_leds_p;
 
@@ -59,25 +60,25 @@ module spi_rgb_effects #(
     // Write Enables
     always @(posedge clk)
     if (bus_clr) begin
-        bus_we_gpio_oe <= 1'b0;
-        bus_we_gpio_o  <= 1'b0;
+        bus_we_func_reg_o <= 1'b0;
+        bus_we_rgb_o <= 1'b0;
     end else begin
-        func_reg_o <= wb_we & (wb_addr[1:0] == 2'b00);
-        rgb_o  <= wb_we & (wb_addr[1:0] == 2'b01);
+        bus_we_func_reg_o <= wb_we & (wb_addr[1:0] == 2'b00);
+        bus_we_rgb_o  <= wb_we & (wb_addr[1:0] == 2'b01);
     end
 
     // Registers
     always @(posedge clk)
-    if (rst)
-        func_reg_o <= 0;
-    else if (bus_we_gpio_oe)
-        func_reg_data <= wb_wdata[N-1:0];
+    if (rst == 1'b0)
+        func_reg_data <= 0;
+    else if (bus_we_func_reg_o)
+        func_reg_data <= wb_wdata;
 
     always @(posedge clk)
-    if (rst)
-        rgb_o <= 0;
-    else if (bus_we_gpio_o)
-        rgb_data <= wb_wdata[N-1:0];
+    if (rst == 1'b0)
+        ctrl_reg_data <= 0;
+    else if (bus_we_rgb_o)
+        ctrl_reg_data <= wb_wdata;
 
         // Read-Mux
     always @(posedge clk)
@@ -86,24 +87,31 @@ module spi_rgb_effects #(
     else
         casez (wb_addr[1:0])
             2'b00:   wb_rdata <= func_reg_data;
-            2'b01:   wb_rdata <= rgb_data;
+            2'b01:   wb_rdata <= ctrl_reg_data;
             // 2'b10:   wb_rdata <= { {(32-N){1'b0}}, gpio_i  };
             default: wb_rdata <= 32'hxxxxxxxx;
         endcase
 
         // Effects
     always @(posedge clk) begin
-        driver_enable <= func_reg_data[0];
-        cycle_enable <= func_reg_data[1];
-        per_channel_enable <= func_reg_data[2];
+        if (rst == 1'b0) begin
+            driver_enable <= 0;
+            cycle_enable  <= 0;
+            per_channel_enable <= 0;
+        end else begin
+            driver_enable <= func_reg_data[0];
+            cycle_enable  <= func_reg_data[1];
+            per_channel_enable <= func_reg_data[2];
+        end
     end
 
     // RGB LED wrapper
     rgbled_cycle rgbled_cycle_inst (
         .clk(clk),
         .rst(rst),
-        // WHEN 1 - test mode is enabled
-        // .test_mode(data_vector[0][0]),
+        .r_speed(ctrl_reg_data[4:0]),
+        .g_speed(ctrl_reg_data[12:8]),
+        .b_speed(ctrl_reg_data[20:16]),
         .enable(cycle_enable),
         .rgb_out(rgb_leds_c)
     );
@@ -115,17 +123,17 @@ module spi_rgb_effects #(
 
         .enable(per_channel_enable),
 
-        .led_r_in(rgb_data[7:0]),
-        .led_g_in(rgb_data[8:15]),
-        .led_b_in(rgb_data[16:24]),
+        .led_r_in(ctrl_reg_data[7:0]),
+        .led_g_in(ctrl_reg_data[15:8]),
+        .led_b_in(ctrl_reg_data[23:16]),
 
-        .rgb_out(rgb_leds_p),
+        .rgb_out(rgb_leds_p)
     );
 
     // RGB LED, to the output
     always @(posedge clk) begin
-        if (rst) begin
-            rgb_leds_o <= 3'b000;
+        if (rst == 1'b0) begin
+            rgb_leds_d <= 3'b000;
         end else begin
             if (cycle_enable) begin
                 rgb_leds_d <= rgb_leds_c;

@@ -3,11 +3,14 @@ PROJ := spi_to_rgb
 
 PROJ_DEPS := spi_slave
 PROJ_RTL_SRCS := $(addprefix rtl/, \
-	rgbled.v \
+	rgbled_per_channel.v \
+	rgbled_cycle.v \
 	pll.v \
 	cycle.v \
+	wb_rgb_effects.v \
 )
 PROJ_TESTBENCHES = \
+	wb_rgb_effects_tb \
 	$(NULL)
 PROJ_TOP_SRC := rtl/top.v
 PROJ_TOP_MOD := top

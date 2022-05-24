@@ -10,53 +10,49 @@
  */
 `default_nettype none
 module rgbled_cycle (
-  input clk,
-  input rst,
+  input wire        clk,
+  input wire        rst,
 
-  input enable,
+  input wire  [4:0] r_speed,
+  input wire  [4:0] g_speed,
+  input wire  [4:0] b_speed,
 
-  // Output to the LED pins
-  output [2:0] rgb_out
+  input wire        enable, // Enable cycle
+
+  output wire [2:0] rgb_out // Output to the LED pins
 );
 
-  wire w_cycle_r, w_cycle_g, w_cycle_b;
-  wire w_led_r, w_led_g, w_led_b;
-  reg r_led_r, r_led_g, r_led_b;
-
   // Cycle speeds of the RGB colors (All primes)
-  parameter
-  p_speed_r = 20'hff,
-  p_speed_g = 20'hff,
-  p_speed_b = 20'hff;
 
   // RED
   cycle #(
-  .START_POS(0)
+  .START_PHASE(0) // cycle.PHASE_UP_0
   ) red_cycle (
-    .i_clk(clk),
-    .i_rst(rst),
-    .i_speed(p_speed_r),
-    .o_led(rgb_out[0]),
+    .clk(clk),
+    .rst(rst),
+    .i_speed(r_speed),
+    .o_led(rgb_out[0])
   );
 
   // GREEN
   cycle #(
-  .START_POS(512)
+  .START_PHASE(2) // cycle.PHASE_HIGH_1
   ) green_cycle (
-    .i_clk(clk),
-    .i_rst(rst),
-    .i_speed(p_speed_g),
+    .clk(clk),
+    .rst(rst),
+    .i_speed(g_speed),
     .o_led(rgb_out[1])
   );
 
   // BLUE
   cycle #(
-  .START_POS(1024)
+  .START_PHASE(4) // cycle.PHASE_LOW_0
   ) blue_cycle (
-    .i_clk(clk),
-    .i_rst(rst),
-    .i_speed(p_speed_b),
+    .clk(clk),
+    .rst(rst),
+    .i_speed(b_speed),
     .o_led(rgb_out[2])
   );
+
 
 endmodule

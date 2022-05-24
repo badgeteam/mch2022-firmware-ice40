@@ -17,7 +17,7 @@ module rgbled_per_channel (
     input wire enable,
 
     // Delta sigma output
-    output wire rgb_out[2:0],
+    output wire [2:0] rgb_out,
 
     // 8-bit input channels
     input wire [7:0] led_r_in,
@@ -25,38 +25,45 @@ module rgbled_per_channel (
     input wire [7:0] led_b_in
 );
 
-    delta_sigma(
+    delta_sigma dsr_inst(
         .clk(clk),
-        .control      (led_r_in),
-        .led_out      (rgb_out[0]),
+        .rst(rst),
+        .control(led_r_in),
+        .led_out(rgb_out[0])
     );
-    delta_sigma(
+    delta_sigma dsg_inst(
         .clk(clk),
-        .control      (led_g_in),
-        .led_out      (rgb_out[1]),
+        .rst(rst),
+        .control(led_g_in),
+        .led_out(rgb_out[1])
     );
-    delta_sigma(
+    delta_sigma dsb_inst(
         .clk(clk),
-        .control      (led_b_in),
-        .led_out      (rgb_out[2]),
+        .rst(rst),
+        .control(led_b_in),
+        .led_out(rgb_out[2])
     );
 endmodule
 
 module delta_sigma(
     input  wire clk,
+    input  wire rst,
     input  wire [7:0] control,
     output reg led_out
 );
-    wire [8:0] phase_new;
-    reg  [7:0] r_count_out = 0;
+    wire [8:0] phase_new = phase + control;
     reg  [7:0] phase;
     reg        r_led;
 
     always @(posedge clk) begin
         // PWM the led
         phase <= phase_new[7:0];
-        led_out <= phase_new[8];
+        if (rst == 1'b0) begin
+            phase <= 0;
+            led_out <= 0;
+        end else begin
+            led_out <= phase_new[8];
+        end
     end
 
-    assign phase_new = phase + r_count_out;
 endmodule
