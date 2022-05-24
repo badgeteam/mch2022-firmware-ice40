@@ -17,11 +17,12 @@
 
 : lcd-init ( -- )
 
-  1 ( LCD_CS_N ) 4 ( LCD_MODE ) or                    lcd-ctrl io!
-  1 ms
-  1 ( LCD_CS_N ) 4 ( LCD_MODE ) or 2 ( LCD_RST_N ) or lcd-ctrl io!
-  120 ms
-                 4 ( LCD_MODE )    2 ( LCD_RST_N ) or lcd-ctrl io!
+  ." Trying to get access to LCD... Press ESC to exit." cr
+
+  begin
+    esc? if welcome quit then
+    lcd-ctrl io@ 4 ( LCD_MODE ) and
+  until
 
   \ Initialisation sequence
 

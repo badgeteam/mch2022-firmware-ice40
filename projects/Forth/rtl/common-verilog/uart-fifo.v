@@ -44,7 +44,7 @@ module buart (
     reg [$clog2(`cfg_divider)-1:0] send_divcnt;   // Counts to cfg_divider. Reserve enough bits!
     reg send_dummy;
 
-
+    (* mem2reg *)
     reg [7:0] empfangenes [7:0];
     reg [2:0] lesezeiger;
     reg [2:0] schreibzeiger;

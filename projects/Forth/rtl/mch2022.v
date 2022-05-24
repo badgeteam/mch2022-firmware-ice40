@@ -18,9 +18,9 @@ module top(input clk_in, // 12 MHz
            output reg        lcd_rs,
            output            lcd_wr_n,
            output reg        lcd_cs_n,
-           output reg        lcd_mode,
            output reg        lcd_rst_n,
            input  wire       lcd_fmark,
+           input             lcd_mode,
 
            inout [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
 );
@@ -259,8 +259,8 @@ module top(input clk_in, // 12 MHz
 
   // Software control of special wires
 
-  reg [2:0] lcd_ctrl = 3'b101;
-  assign {lcd_mode, lcd_rst_n, lcd_cs_n} = lcd_ctrl;
+  reg [1:0] lcd_ctrl = 2'b01;
+  assign {lcd_rst_n, lcd_cs_n} = lcd_ctrl;
 
   // Set WR in the second half of the clock cycle using DDR pin mode to allow the data lines to settle
 
@@ -435,7 +435,7 @@ module top(input clk_in, // 12 MHz
     (io_addr[11] & (io_addr[7:4] ==  6) ?  color_bg0                                : 16'd0) |
     (io_addr[11] & (io_addr[7:4] ==  7) ?  color_fg1                                : 16'd0) |
     (io_addr[11] & (io_addr[7:4] ==  8) ?  color_bg1                                : 16'd0) |
-    (io_addr[11] & (io_addr[7:4] ==  9) ?  {updating, fmark_sync2, lcd_ctrl}        : 16'd0) |
+    (io_addr[11] & (io_addr[7:4] ==  9) ?  {updating,fmark_sync2,lcd_mode,lcd_ctrl} : 16'd0) |
     //                              10  ?  lcd_data, writeonly
     (io_addr[11] & (io_addr[7:4] == 11) ?  {blue_in, green_in, red_in, LEDs}        : 16'd0) |
     (io_addr[11] & (io_addr[7:4] == 12) ?  sdm_red                                  : 16'd0) |
