@@ -498,7 +498,7 @@ allot here constant BUF
 ; 4 foldable
 \ #######   MEMORY   ##########################################
 
-: unused ( -- u ) $3200 here - ; \ 12.5 kb
+: unused ( -- u ) $3000 here - ; \ 12 kb
 
 \ #######   IO   ##############################################
 
@@ -539,8 +539,6 @@ allot here constant BUF
 : sram! ( x addr -- ) $0800 io! $0810 io! ;
 
 : esc? ( -- ? ) key? if key 27 = else false then ;
-
-$608C $31FE ! \ Location $31FE is an interrupt vector ! Place ALU exit opcode here.
 
 \ -----------------------------------------------------------------------------
 \ 320x240 LCD Display ILI9341
@@ -889,7 +887,7 @@ dint -lcd new
   swap
 ;
 
-' interrupt 1 rshift $31FE ! \ Generate JMP opcode for vector location
+' interrupt 1 rshift $0002 ! \ Generate JMP opcode for vector location
 
 \ -----------------------------------------------------------------------------
 \  Fun with colors
@@ -1100,9 +1098,9 @@ dint -lcd new
   repeat
   drop r>
 
-  $000C =                            \ A call to execute
+  $000E =                                  \ A call to execute
   disasm-$ @ 2 cells - @ $C000 and $C000 =  \ after a literal which has bit $4000 set means:
-  and                                  \ Memory fetch.
+  and                                        \ Memory fetch.
   if
     ."   --> " disasm-$ @ 2 cells - @ $3FFF and .x ." @"
   then

@@ -1,8 +1,8 @@
 
 `default_nettype none
 
-`include "common-verilog/stack2.v"
-`include "common-verilog/stack3.v"
+`include "../common-verilog/stack2.v"
+`include "../common-verilog/stack3.v"
 
 module j1(
   input wire clk,
@@ -18,7 +18,7 @@ module j1(
 );
 
   parameter MEMWORDS = 8192;       // Maximum of 8k words of 16 bits = 16 kb.
-  parameter IRQOPCODE = 16'h5FFF; // Interrupt: Execute "Call 3FFE".
+  parameter IRQOPCODE = 16'h4001; // Interrupt: Execute "Call 0002".
 
   // ######   MEMORY   ########################################
 

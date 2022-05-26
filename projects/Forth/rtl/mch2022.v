@@ -65,7 +65,7 @@ module top(input clk_in, // 12 MHz
 
   // ######   Processor   #####################################
 
-  j1 #(.MEMWORDS(6400), .IRQOPCODE(16'h58FF)) _j1( // 12.5 kb Memory, Interrupt: Execute "Call 31FE". 25 512 * 2 - 1 rshift $4000 or .x
+  j1 #( .MEMWORDS(6144) ) _j1( // 12 kb Memory
 
     .clk(clk),
     .resetq(resetq),

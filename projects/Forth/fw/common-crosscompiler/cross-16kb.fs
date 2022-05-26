@@ -220,7 +220,7 @@ variable wordstart
 :: @i ( addr -- x ) \ Effect similar to @ on final execution ( -- ) on compilation.
     tdp @ tcell - >r                   \ Get last opcode, which should be a literal
     r@ tw@ $4000 or r> tw!              \ and prepare the address for a high-call.
-    $000C 1 rshift $4000 or tw,          \ Insert a call to execute, which is close to the beginning of the nucleus. We cannot tick target definitions at this stage.
+    $000E 1 rshift $4000 or tw,          \ Insert a call to execute, which is close to the beginning of the nucleus. We cannot tick target definitions at this stage.
 ;
 
 \ Generates a call to the next location. The following part of the definition is thus executed twice.
@@ -362,8 +362,8 @@ variable insertquit \ This is a hack to backpatch the address of quit.
 
 target included      \ Include the source file of the nucleus to be crosscompiled
 
-[ tdp @ 0 org ] main [ org ]
-[ tdp @ insertquit @ org ] quit [ org ]
+[ tdp @ 0 org ] jmp main [ org ]
+[ tdp @ insertquit @ org ] jmp quit [ org ]
 
 meta
 

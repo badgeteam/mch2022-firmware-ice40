@@ -164,7 +164,7 @@ dint -lcd new
   swap
 ;
 
-' interrupt 1 rshift $31FE ! \ Generate JMP opcode for vector location
+' interrupt 1 rshift $0002 ! \ Generate JMP opcode for vector location
 
 \ -----------------------------------------------------------------------------
 \  Fun with colors

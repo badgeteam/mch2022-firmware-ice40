@@ -1,6 +1,6 @@
 \ #######   MEMORY   ##########################################
 
-: unused ( -- u ) $3200 here - ; \ 12.5 kb
+: unused ( -- u ) $3000 here - ; \ 12 kb
 
 \ #######   IO   ##############################################
 
@@ -41,5 +41,3 @@
 : sram! ( x addr -- ) $0800 io! $0810 io! ;
 
 : esc? ( -- ? ) key? if key 27 = else false then ;
-
-$608C $31FE ! \ Location $31FE is an interrupt vector ! Place ALU exit opcode here.

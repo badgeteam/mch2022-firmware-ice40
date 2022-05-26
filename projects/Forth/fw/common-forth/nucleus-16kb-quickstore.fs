@@ -1,6 +1,7 @@
 
 \ Swapforth Nucleus by James Bowman enhanced with constant folding and inline optimisations by Matthias Koch
 
+; \ Return opcode for interrupt vector
 
 \ -----------------------------------------------------------------------------
 \  Low level definitions that are different for HX1K and HX8K
@@ -575,7 +576,7 @@ header compile,
          drop
          h# 4000 prev@xor \ Add $4000 to address to make this a high call
          prev !
-         h# 4006 jmp w,   \ A call to execute, which is close to the beginning of the nucleus. We have no constant folding here, so do not use ['] and prepare the opcode.
+         h# 4007 jmp w,   \ A call to execute, which is close to the beginning of the nucleus. We have no constant folding here, so do not use ['] and prepare the opcode.
       then
     then
   then
@@ -1284,6 +1285,6 @@ header welcome
     [char] e 2emit
     [char] .
     [char] 2 2emit
-    [char] 5 emit
+    [char] 6 emit
     cr
 ;

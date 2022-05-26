@@ -114,9 +114,9 @@
   repeat
   drop r>
 
-  $000C =                            \ A call to execute
+  $000E =                                  \ A call to execute
   disasm-$ @ 2 cells - @ $C000 and $C000 =  \ after a literal which has bit $4000 set means:
-  and                                  \ Memory fetch.
+  and                                        \ Memory fetch.
   if
     ."   --> " disasm-$ @ 2 cells - @ $3FFF and .x ." @"
   then
