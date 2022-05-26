@@ -12,7 +12,23 @@ module top(
   output [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
 );
 
-  wire clk = clk_in; // Directly use the 12 MHz oscillator, no fancy PLL config
+  // ----------------------------------------------------------
+  //  Clock
+  // ----------------------------------------------------------
+
+  wire clk; // 48 MHz
+
+  SB_PLL40_PAD  #(.FEEDBACK_PATH("SIMPLE"),
+                  .DIVR(4'b0000),         // DIVR =  0
+                  .DIVF(7'b0111111),      // DIVF = 63
+                  .DIVQ(3'b100),          // DIVQ =  4
+                  .FILTER_RANGE(3'b001)   // FILTER_RANGE = 1
+                 ) pll (
+                         .PACKAGEPIN(clk_in),
+                         .PLLOUTCORE(clk),
+                         .RESETB(1'b1),
+                         .BYPASS(1'b0)
+                        );
 
   // ----------------------------------------------------------
   //   Reset logic
@@ -69,21 +85,23 @@ module top(
   always @(posedge clk)
   begin
     if          (csn_fall) incoming_data <= 0;
-    else if (usr_mosi_stb) incoming_data <= {incoming_data[4*8-1], usr_mosi_data};
+    else if (usr_mosi_stb) incoming_data <= {incoming_data[4*8-1:0], usr_mosi_data};
 
     if (csn_rise & (incoming_data[5*8-1:4*8] == 8'hf4)) buttonstate <= incoming_data[4*8-1:0];
   end
 
-  assign {blue, green, red} = {csn_rise, csn_fall, usr_mosi_stb}; // Debug: View transfers
+  // Data contents:
+  //      | buttonstate[31:16]  | buttonstate[15:0]
+  // 0xF4 | 2 bytes button mask | 2 bytes button state
 
   // ----------------------------------------------------------
   //   Sigma-Delta-Modulators on LEDs
   // ----------------------------------------------------------
 
   always @(posedge clk) begin
-    sdm_red   <= {buttonstate[ 7: 0], 8'h00};
-    sdm_green <= {buttonstate[15: 8], 8'h00};
-    sdm_blue  <= {buttonstate[23:16], 8'h00};
+    sdm_red   <= {buttonstate[ 3:0], 12'd0};
+    sdm_green <= {buttonstate[ 7:4], 12'd0};
+    sdm_blue  <= {buttonstate[11:8], 12'd0};
   end
 
   wire red, green, blue;
@@ -92,7 +110,7 @@ module top(
   reg [15:0] sdm_green, phase_green; reg sdm_green_out; always @(posedge clk) {sdm_green_out, phase_green} <= phase_green + sdm_green;
   reg [15:0] sdm_blue,  phase_blue;  reg sdm_blue_out;  always @(posedge clk) {sdm_blue_out,  phase_blue}  <= phase_blue  + sdm_blue;
 
-  // assign {blue, green, red} = {sdm_blue_out, sdm_green_out, sdm_red_out};
+  assign {blue, green, red} = {sdm_blue_out, sdm_green_out, sdm_red_out};
 
   // ----------------------------------------------------------
   // Instantiate iCE40 LED driver hard logic.
