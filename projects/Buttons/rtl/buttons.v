@@ -48,11 +48,9 @@ module top(
   //   SPI interface
   // ----------------------------------------------------------
 
-  wire csn_state, csn_rise, csn_fall;
-
-  wire [7:0] usr_miso_data = 8'h00;
-  wire [7:0] usr_mosi_data;
+  wire [7:0] usr_miso_data, usr_mosi_data;
   wire usr_mosi_stb, usr_miso_ack;
+  wire csn_state, csn_rise, csn_fall;
 
   spi_dev_core _communication (
 
@@ -76,23 +74,42 @@ module top(
     .spi_cs_n (spi_cs_n)
   );
 
-  // A very simple SPI protocol implementation that looks for 0xF4 messages
-  // and captures the following 4 bytes.
+  wire [7:0] pw_wdata;
+  wire pw_wcmd, pw_wstb, pw_end;
 
-  reg [5*8-1:0] incoming_data;
+  spi_dev_proto _protocol (
+    .clk (clk),
+    .rst (~resetq),
+
+    // Connection to the actual SPI module:
+
+    .usr_mosi_data (usr_mosi_data),
+    .usr_mosi_stb  (usr_mosi_stb),
+    .usr_miso_data (usr_miso_data),
+    .usr_miso_ack  (usr_miso_ack),
+
+    .csn_state (csn_state),
+    .csn_rise  (csn_rise),
+    .csn_fall  (csn_fall),
+
+    // These wires deliver received data:
+
+    .pw_wdata (pw_wdata),
+    .pw_wcmd  (pw_wcmd),
+    .pw_wstb  (pw_wstb),
+    .pw_end   (pw_end)
+  );
+
+  reg     [7:0] command;
+  reg [4*8-1:0] incoming_data;
   reg [4*8-1:0] buttonstate;
 
   always @(posedge clk)
   begin
-    if          (csn_fall) incoming_data <= 0;
-    else if (usr_mosi_stb) incoming_data <= {incoming_data[4*8-1:0], usr_mosi_data};
-
-    if (csn_rise & (incoming_data[5*8-1:4*8] == 8'hf4)) buttonstate <= incoming_data[4*8-1:0];
+    if (pw_wstb & pw_wcmd)           command       <= pw_wdata;
+    if (pw_wstb)                     incoming_data <= incoming_data << 8 | pw_wdata;
+    if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
   end
-
-  // Data contents:
-  //      | buttonstate[31:16]  | buttonstate[15:0]
-  // 0xF4 | 2 bytes button mask | 2 bytes button state
 
   // ----------------------------------------------------------
   //   Sigma-Delta-Modulators on LEDs
