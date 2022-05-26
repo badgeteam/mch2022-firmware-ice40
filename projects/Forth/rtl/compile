@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir -p build
+
 echo "Synthesize design..."
 yosys -q -p "synth_ice40 -top top -json build/mch2022.json -blif build/mch2022.blif -dsp -relut -abc2" mch2022.v
 

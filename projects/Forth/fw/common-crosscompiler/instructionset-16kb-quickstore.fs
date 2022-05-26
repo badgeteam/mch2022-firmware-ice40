@@ -134,6 +134,7 @@
 
 :: 2drop     3OS                 d-2 alu ;
 :: 2droprdrop 3OS            r-1 d-2 alu ;
+:: 3rd       3OS   T->N          d+1 alu ;
 
 \ Specials for HX8K
 

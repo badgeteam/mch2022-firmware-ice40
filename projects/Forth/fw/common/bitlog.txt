@@ -1,0 +1,51 @@
+
+\ Calculate Bitlog and Bitexp - close relatives to logarithm and exponent to base 2.
+
+: clz ( x -- u )
+  0
+  begin
+    over 0< not
+  while
+    1+
+    swap 2* 1 or swap
+  repeat
+  nip
+;
+
+: bitlog ( u -- u )
+
+ \ Invented by Tom Lehman at Invivo Research, Inc., ca. 1990
+ \ Changed for 16 bit integers
+
+ \ Gives an integer analog of the log function
+ \ For large x, B(x) = 16*(log(base 2)(x) - 2)
+
+  dup 16 u<= if 1 lshift
+             else
+               ( u )
+               13 over clz - 4 lshift
+               ( u s1 )
+               swap
+               ( s1 u )
+               11 over clz - rshift $F and
+               ( s1 s2 ) or
+             then
+; 1 foldable
+
+: bitexp ( u -- u )
+
+  \ Returns an integer value equivalent to
+  \ the exponential. For numbers > 32,
+  \ bitexp(x) approx = 2^(x/16 + 2)
+
+  \ Usable range: 0 .. 223.
+
+  223 umin
+  dup 32 u<
+  if
+    1 rshift
+  else
+    dup $F and $10 or
+    swap 4 rshift 2 - lshift
+  then
+; 1 foldable

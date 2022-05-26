@@ -357,8 +357,6 @@ header-1-foldable aligned
     1+ 2/ 2*
 ;
 
-: 3rd ( x1 x2 x3 -- x1 x2 x3 x1 ) >r over r> swap ;
-
 : lower ( c1 -- c2 ) \ c2 is the lower-case of c1
     dup [char] A - d# 26 u<
     h# 20 and +
@@ -1286,6 +1284,6 @@ header welcome
     [char] e 2emit
     [char] .
     [char] 2 2emit
-    [char] 4 emit
+    [char] 5 emit
     cr
 ;
