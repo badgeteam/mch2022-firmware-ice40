@@ -100,9 +100,9 @@ module top(
     .pw_end   (pw_end)
   );
 
-  reg     [7:0] command;
-  reg [4*8-1:0] incoming_data;
-  reg [4*8-1:0] buttonstate;
+  reg  [7:0] command;
+  reg [31:0] incoming_data;
+  reg [31:0] buttonstate;
 
   always @(posedge clk)
   begin
@@ -111,14 +111,42 @@ module top(
     if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
   end
 
+  wire joystick_down  = buttonstate[24];
+  wire joystick_up    = buttonstate[25];
+  wire joystick_left  = buttonstate[26];
+  wire joystick_right = buttonstate[27];
+  wire joystick_press = buttonstate[28];
+  wire home           = buttonstate[29];
+  wire menu           = buttonstate[30];
+  wire select         = buttonstate[31];
+
+  wire start          = buttonstate[16];
+  wire accept         = buttonstate[17];
+  wire back           = buttonstate[18];
+
+  /*
+Bits are mapped to the following keys:
+ 0 - joystick down
+ 1 - joystick up
+ 2 - joystick left
+ 3 - joystick right
+ 4 - joystick press
+ 5 - home
+ 6 - menu
+ 7 - select
+ 8 - start
+ 9 - accept
+10 - back
+  */
+
   // ----------------------------------------------------------
   //   Sigma-Delta-Modulators on LEDs
   // ----------------------------------------------------------
 
   always @(posedge clk) begin
-    sdm_red   <= {buttonstate[ 3:0], 12'd0};
-    sdm_green <= {buttonstate[ 7:4], 12'd0};
-    sdm_blue  <= {buttonstate[11:8], 12'd0};
+    sdm_red   <= {joystick_press, joystick_right, joystick_left, joystick_up, joystick_down, 11'd0};
+    sdm_green <= {start, select, menu, home, 12'd0};
+    sdm_blue  <= {back, accept, 14'd0};
   end
 
   wire red, green, blue;
