@@ -69,7 +69,7 @@ module spi_dev_ezwb #(
 		.usr_mosi_data (usr_mosi_data),
 		.usr_mosi_stb  (usr_mosi_stb),
 		.usr_miso_data (usr_miso_data),
-		.usr_miso_ack  (usr_miso_ack ),
+		.usr_miso_ack  (usr_miso_ack),
 		.csn_state     (csn_state),
 		.csn_rise      (csn_rise),
 		.csn_fall      (csn_fall),
