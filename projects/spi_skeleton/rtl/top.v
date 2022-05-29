@@ -28,7 +28,7 @@ module top (
 	input  wire       clk_in
 );
 
-	localparam integer WN = 1;
+	localparam integer WN = 2;
 	genvar i;
 
 
@@ -231,6 +231,26 @@ module top (
 		.wb_we      (wb_we),
 		.wb_cyc     (wb_cyc[0]),
 		.wb_ack     (wb_ack[0]),
+		.clk        (clk),
+		.rst        (rst)
+	);
+
+
+	// SPRAM [1]
+	// -----
+
+	ice40_spram_wb #(
+		.AW(14),
+		.DW(32),
+		.ZERO_RDATA(1)
+	) spram_I (
+		.wb_addr    (wb_addr[13:0]),
+		.wb_rdata   (wb_rdata[1]),
+		.wb_wdata   (wb_wdata),
+		.wb_wmsk    (4'h0),
+		.wb_we      (wb_we),
+		.wb_cyc     (wb_cyc[1]),
+		.wb_ack     (wb_ack[1]),
 		.clk        (clk),
 		.rst        (rst)
 	);
