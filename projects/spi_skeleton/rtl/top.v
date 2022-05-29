@@ -128,6 +128,12 @@ module top (
 
 	wire       pw_end;
 
+	wire       pw_req;
+	wire       pw_gnt;
+
+	wire [7:0] pw_rdata;
+	wire       pw_rstb;
+
 	// Device Core
 	spi_dev_core core_I (
 		.spi_miso      (spi_miso),
@@ -158,6 +164,10 @@ module top (
 		.pw_wcmd       (pw_wcmd),
 		.pw_wstb       (pw_wstb),
 		.pw_end        (pw_end),
+		.pw_req        (pw_req),
+		.pw_gnt        (pw_gnt),
+		.pw_rdata      (pw_rdata),
+		.pw_rstb       (pw_rstb),
 		.clk           (clk),
 		.rst           (rst)
 	);
@@ -186,6 +196,10 @@ module top (
 		.pw_wcmd  (pw_wcmd),
 		.pw_wstb  (pw_wstb),
 		.pw_end   (pw_end),
+		.pw_req   (pw_req),
+		.pw_gnt   (pw_gnt),
+		.pw_rdata (pw_rdata),
+		.pw_rstb  (pw_rstb),
 		.wb_wdata (wb_wdata),
 		.wb_rdata (wb_rdata_flat),
 		.wb_addr  (wb_addr),
