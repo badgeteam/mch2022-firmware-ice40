@@ -171,6 +171,16 @@ module spi_dev_to_wb_tb;
 		pw_write(0, 8'hba);
 		pw_write(0, 8'hbe);
 
+		pw_write(0, 8'h40); // Mode R, Re-address, Device 0
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
+
+		pw_write(0, 8'hca);
+		pw_write(0, 8'hfe);
+		pw_write(0, 8'hba);
+		pw_write(0, 8'hbe);
+
 		@(posedge clk);
 		pw_end <= 1'b1;
 		@(posedge clk);
