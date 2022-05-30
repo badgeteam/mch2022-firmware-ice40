@@ -9,15 +9,25 @@ CFLAGS=-Wall -Os -march=rv32i -mabi=ilp32 -ffreestanding -flto -nostartfiles -fo
 HEADERS_common=\
 	config.h \
 	console.h \
+	lcd.h \
 	led.h \
+	memtest.h \
 	mini-printf.h \
+	misc.h \
+	msg.h \
+	qpi.h \
 	$(NULL)
 
 SOURCES_common=\
 	start.S \
 	console.c \
+	lcd.c \
 	led.c \
+	memtest.c \
 	mini-printf.c  \
+	misc.c \
+	msg.c \
+	qpi.c \
 	$(NULL)
 
 HEADERS_app=\
