@@ -574,7 +574,7 @@ allot here constant BUF
   1 ms
   1 ( LCD_CS_N ) 2 ( LCD_RST_N ) or lcd-ctrl io!
   120 ms
-                 2 ( LCD_RST_N ) or lcd-ctrl io!
+                 2 ( LCD_RST_N )    lcd-ctrl io!
 
   \ Initialisation sequence
 
