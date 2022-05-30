@@ -15,10 +15,13 @@ module misc_wb #(
 	// GPIO pads
 	inout  wire [N-1:0] gpio,
 
+	// LCD fmark
+	input  wire        lcd_fmark,
+
 	// Wishbone interface
 	input  wire [31:0] wb_wdata,
 	output reg  [31:0] wb_rdata,
-	input  wire [ 1:0] wb_addr,
+	input  wire [ 2:0] wb_addr,
 	input  wire        wb_we,
 	input  wire        wb_cyc,
 	output reg         wb_ack,
@@ -41,6 +44,10 @@ module misc_wb #(
 	reg  [N-1:0] gpio_o;
 	wire [N-1:0] gpio_i;
 
+	// Counters
+	reg   [31:0] cnt_cycle;
+	reg   [15:0] cnt_frame;
+
 
 	// Bus interface
 	// -------------
@@ -57,8 +64,8 @@ module misc_wb #(
 			bus_we_gpio_oe <= 1'b0;
 			bus_we_gpio_o  <= 1'b0;
 		end else begin
-			bus_we_gpio_oe <= wb_we & (wb_addr[1:0] == 2'b00);
-			bus_we_gpio_o  <= wb_we & (wb_addr[1:0] == 2'b01);
+			bus_we_gpio_oe <= wb_we & (wb_addr[2:0] == 3'b000);
+			bus_we_gpio_o  <= wb_we & (wb_addr[2:0] == 3'b001);
 		end
 
 	// Registers
@@ -79,12 +86,32 @@ module misc_wb #(
 		if (bus_clr)
 			wb_rdata <= 0;
 		else
-			casez (wb_addr[1:0])
-				2'b00:   wb_rdata <= { {(32-N){1'b0}}, gpio_oe };
-				2'b01:   wb_rdata <= { {(32-N){1'b0}}, gpio_o  };
-				2'b10:   wb_rdata <= { {(32-N){1'b0}}, gpio_i  };
+			casez (wb_addr[2:0])
+				3'b000:  wb_rdata <= { {(32-N){1'b0}}, gpio_oe };
+				3'b001:  wb_rdata <= { {(32-N){1'b0}}, gpio_o  };
+				3'b010:  wb_rdata <= { {(32-N){1'b0}}, gpio_i  };
+				3'b1z0:  wb_rdata <= cnt_cycle;
+				3'b1z1:  wb_rdata <= { 16'h0000, cnt_frame };
 				default: wb_rdata <= 32'hxxxxxxxx;
 			endcase
+
+
+	// Counters
+	// --------
+
+	// Cycle counter
+	always @(posedge clk)
+		if (rst)
+			cnt_cycle <= 0;
+		else
+			cnt_cycle <= cnt_cycle + 1;
+
+	// Frame mark counter
+	always @(posedge clk)
+		if (rst)
+			cnt_frame <= 0;
+		else
+			cnt_frame <= cnt_frame + lcd_fmark;
 
 
 	// IOBs

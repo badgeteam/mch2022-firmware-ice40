@@ -170,7 +170,8 @@ module top (
 			lcd_rst_n,	// [ 8]
 			pmod		// [ 7:0]
 		}),
-		.wb_addr  (wb_addr[1:0]),
+		.lcd_fmark(lcd_phy_fmark_stb),
+		.wb_addr  (wb_addr[2:0]),
 		.wb_rdata (wb_rdata[0]),
 		.wb_we    (wb_we),
 		.wb_wdata (wb_wdata),

@@ -225,7 +225,12 @@ struct wb_misc {
 		uint32_t oe;
 		uint32_t out;
 		uint32_t in;
+		uint32_t _rsvd;
 	} gpio;
+	struct {
+		uint32_t cycles;
+		uint32_t frames;
+	} cnt;
 } __attribute__((packed,aligned(4)));
 
 static volatile struct wb_misc * const misc_regs = (void*)(MISC_BASE);
