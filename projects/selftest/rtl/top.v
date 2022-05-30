@@ -325,6 +325,10 @@ module top (
 		.wb_we         (wb_we),
 		.wb_cyc        (wb_cyc[5]),
 		.wb_ack        (wb_ack[5]),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
 		.clk           (clk_1x),
 		.rst           (rst)
 	);

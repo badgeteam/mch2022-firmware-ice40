@@ -30,12 +30,18 @@ module lcd_tb;
 	wire        lcd_phy_fmark_stb;
 
 	// Wishbone bus
-	reg    [15:0] wb_addr;
-	wire   [31:0] wb_rdata;
-	reg    [31:0] wb_wdata;
-	reg           wb_cyc;
-	reg           wb_we;
-	wire          wb_ack;
+	reg  [15:0] wb_addr;
+	wire [31:0] wb_rdata;
+	reg  [31:0] wb_wdata;
+	reg         wb_cyc;
+	reg         wb_we;
+	wire        wb_ack;
+
+	// Protocol Wrapper IF
+	reg   [7:0] pw_wdata;
+	reg         pw_wcmd;
+	reg         pw_wstb;
+	reg         pw_end;
 
 	// Clock / Reset
 	reg         clk = 1'b0;
@@ -78,6 +84,10 @@ module lcd_tb;
 		.wb_we         (wb_we),
 		.wb_cyc        (wb_cyc),
 		.wb_ack        (wb_ack),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
 		.clk           (clk),
 		.rst           (rst)
 	);
@@ -124,12 +134,38 @@ module lcd_tb;
 		end
 	endtask
 
+	task pw_write;
+		input       cmd;
+		input [7:0] data;
+		begin
+
+			pw_wdata <= data;
+			pw_wcmd  <= cmd;
+			pw_wstb  <= 1'b1;
+
+			@(posedge clk);
+
+			pw_wdata <= 8'hxx;
+			pw_wcmd  <= 1'bx;
+			pw_wstb  <= 1'b0;
+
+			@(posedge clk);
+			@(posedge clk);
+
+		end
+	endtask
+
 	initial begin
 		// Defaults
 		wb_addr  <= 16'hxxxx;
 		wb_wdata <= 32'hxxxxxxxx;
 		wb_we    <= 1'bx;
 		wb_cyc   <= 1'b0;
+
+		pw_wdata <= 8'hxx;
+		pw_wcmd  <= 1'bx;
+		pw_wstb  <= 1'b0;
+		pw_end   <= 1'b0;
 
 		// Wait for reset
 		@(negedge rst);
@@ -150,6 +186,47 @@ module lcd_tb;
 		wb_write(16'h020b, 32'h00000033);
 
 		wb_write(16'h0000, 32'h000b0000);
+
+		wb_write(16'h0001, 32'h00000001);
+
+		repeat (20)
+			@(posedge clk);
+
+		pw_write(1, 8'hf2);
+		pw_write(0, 8'h01);
+		pw_write(0, 8'ha5);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h00);
+		pw_write(0, 8'haa);
+		pw_write(0, 8'h00);
+		pw_write(0, 8'hbb);
+		pw_write(0, 8'h03);
+		pw_write(0, 8'h5a);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h22);
+		pw_write(0, 8'h33);
+		pw_write(0, 8'hff);
+		pw_write(0, 8'h5a);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h22);
+		pw_write(0, 8'h33);
+
+		@(posedge clk);
+		pw_end <= 1'b1;
+		@(posedge clk);
+		pw_end <= 1'b0;
+
+		pw_write(1, 8'hf2);
+		pw_write(0, 8'hff);
+		pw_write(0, 8'h5a);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h22);
+		pw_write(0, 8'h33);
+
+		@(posedge clk);
+		pw_end <= 1'b1;
+		@(posedge clk);
+		pw_end <= 1'b0;
 
 	end
 

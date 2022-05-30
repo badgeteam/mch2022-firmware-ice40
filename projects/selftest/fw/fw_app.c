@@ -243,6 +243,7 @@ static volatile struct wb_misc * const misc_regs = (void*)(MISC_BASE);
 
 struct wb_lcd {
 	uint32_t csr;
+	uint32_t mux;
 } __attribute__((packed,aligned(4)));
 
 static volatile struct wb_lcd * const lcd_regs = (void*)(LCD_BASE);
@@ -251,6 +252,9 @@ static volatile uint32_t      * const lcd_mem  = (void*)(LCD_BASE + 0x0800);
 #define LCD_CSR_BUSY	(1 << 31)
 #define LCD_CSR_LEN(l)	(((l)-1) << 16)
 #define LCD_CSR_ADDR(a)	(a)
+
+#define LCD_MUX_REQ	(1 << 0)
+#define LCD_MUX_STATE	(1 << 1)
 
 
 static const uint8_t lcd_init_data[] = {
