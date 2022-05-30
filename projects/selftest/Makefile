@@ -14,6 +14,7 @@ PROJ_RTL_SRCS := $(addprefix rtl/, \
 	soc_picorv32_bridge.v \
 	soc_spram.v \
 	spi_loopback.v \
+	spi_msg_wb.v \
 	sysmgr.v \
 )
 PROJ_PREREQ = \

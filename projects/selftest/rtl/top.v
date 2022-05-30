@@ -49,7 +49,7 @@ module top (
 	input  wire       clk_in
 );
 
-	localparam integer WN  = 6;
+	localparam integer WN = 7;
 	genvar i;
 
 
@@ -119,6 +119,11 @@ module top (
 	wire       pw_gnt;
 	wire [7:0] pw_rdata;
 	wire       pw_rstb;
+
+	wire       pwx_req[0:1];
+	wire       pwx_gnt[0:1];
+	wire [7:0] pwx_rdata[0:1];
+	wire       pwx_rstb[0:1];
 
 	// Clock / Reset
 	wire        clk_1x;
@@ -341,6 +346,28 @@ module top (
 		.rst           (rst)
 	);
 
+	// SPI Messages [6]
+	// ------------
+
+	spi_msg_wb spi_msg_I (
+		.wb_wdata      (wb_wdata),
+		.wb_rdata      (wb_rdata[6]),
+		.wb_addr       (wb_addr[1:0]),
+		.wb_we         (wb_we),
+		.wb_cyc        (wb_cyc[6]),
+		.wb_ack        (wb_ack[6]),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
+		.pw_req        (pwx_req[1]),
+		.pw_gnt        (pwx_gnt[1]),
+		.pw_rdata      (pwx_rdata[1]),
+		.pw_rstb       (pwx_rstb[1]),
+		.clk           (clk_1x),
+		.rst           (rst)
+	);
+
 
 	// SPI interface
 	// -------------
@@ -383,16 +410,32 @@ module top (
 		.rst           (rst)
 	);
 
+	// Response arbiter
+	spi_dev_arb #(
+		.N(2)
+	) arb_I (
+		.us_req   (pw_req),
+		.us_gnt   (pw_gnt),
+		.us_rdata (pw_rdata),
+		.us_rstb  (pw_rstb),
+		.ds_req   ({pwx_req[1],   pwx_req[0]}),
+		.ds_gnt   ({pwx_gnt[1],   pwx_gnt[0]}),
+		.ds_rdata ({pwx_rdata[1], pwx_rdata[0]}),
+		.ds_rstb  ({pwx_rstb[1],  pwx_rstb[0]}),
+		.clk      (clk_1x),
+		.rst      (rst)
+	);
+
 	// SPI loopback
 	spi_loopback loopback_I (
 		.pw_wdata (pw_wdata),
 		.pw_wcmd  (pw_wcmd),
 		.pw_wstb  (pw_wstb),
 		.pw_end   (pw_end),
-		.pw_req   (pw_req),
-		.pw_gnt   (pw_gnt),
-		.pw_rdata (pw_rdata),
-		.pw_rstb  (pw_rstb),
+		.pw_req   (pwx_req[0]),
+		.pw_gnt   (pwx_gnt[0]),
+		.pw_rdata (pwx_rdata[0]),
+		.pw_rstb  (pwx_rstb[0]),
 		.clk      (clk_1x),
 		.rst      (rst)
 	);

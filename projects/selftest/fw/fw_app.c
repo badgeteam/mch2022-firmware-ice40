@@ -349,6 +349,25 @@ lcd_color_screen(void)
 
 
 // ---------------------------------------------------------------------------
+// Message
+// ---------------------------------------------------------------------------
+
+struct wb_msg {
+	uint32_t csr;
+	uint32_t data;
+} __attribute__((packed,aligned(4)));
+
+static volatile struct wb_msg * const msg_regs = (void*)(MSG_BASE);
+
+#define MSG_CSR_REQ_PENDING		(1 << 0)
+#define MSG_CSR_RESP_IN_PROGRESS	(1 << 1)
+#define MSG_CSR_RESP_START		(1 << 2)
+#define MSG_CSR_RESP_STOP		(1 << 3)
+
+#define MSG_DATA_INVALID		(1 << 31)
+
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
