@@ -128,12 +128,12 @@ module top (
 		assign wb_rdata_flat[i*32+:32] = wb_rdata[i];
 
 
-	// GPIO [0]
+	// Misc [0]
 	// ----
 
-	gpio_wb #(
+	misc_wb #(
 		.N(12)
-	) gpio_I (
+	) misc_I (
 		.gpio({
 			irq_n,		// [11]
 			lcd_cs_n,	// [10]

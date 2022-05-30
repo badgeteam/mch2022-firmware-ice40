@@ -217,22 +217,24 @@ mt_run(uint32_t size, bool debug)
 
 
 // ---------------------------------------------------------------------------
-// GPIO
+// Misc
 // ---------------------------------------------------------------------------
 
-struct wb_gpio {
-	uint32_t oe;
-	uint32_t out;
-	uint32_t in;
+struct wb_misc {
+	struct {
+		uint32_t oe;
+		uint32_t out;
+		uint32_t in;
+	} gpio;
 } __attribute__((packed,aligned(4)));
 
-static volatile struct wb_gpio * const gpio_regs = (void*)(GPIO_BASE);
+static volatile struct wb_misc * const misc_regs = (void*)(MISC_BASE);
 
-#define GPIO_IRQ_N	(1 << 11)
-#define GPIO_LCD_CS_N	(1 << 10)
-#define GPIO_LCD_MODE	(1 <<  9)
-#define GPIO_LCD_RST_N	(1 <<  8)
-#define GPIO_PMOD(n)	(1 << (n))
+#define MISC_GPIO_IRQ_N	(1 << 11)
+#define MISC_GPIO_LCD_CS_N	(1 << 10)
+#define MISC_GPIO_LCD_MODE	(1 <<  9)
+#define MISC_GPIO_LCD_RST_N	(1 <<  8)
+#define MISC_GPIO_PMOD(n)	(1 << (n))
 
 
 // ---------------------------------------------------------------------------
@@ -303,18 +305,18 @@ static void
 lcd_init(void)
 {
 	// GPIO setup & reset
-	gpio_regs->out &= ~GPIO_LCD_RST_N;
-	gpio_regs->out |= GPIO_LCD_CS_N | GPIO_LCD_MODE;
+	misc_regs->gpio.out &= ~MISC_GPIO_LCD_RST_N;
+	misc_regs->gpio.out |=  MISC_GPIO_LCD_CS_N | MISC_GPIO_LCD_MODE;
 
-	gpio_regs->oe  |= GPIO_LCD_CS_N | GPIO_LCD_MODE | GPIO_LCD_RST_N;
+	misc_regs->gpio.oe  |=  MISC_GPIO_LCD_CS_N | MISC_GPIO_LCD_MODE | MISC_GPIO_LCD_RST_N;
 
 	wait_ms(1);
 
-	gpio_regs->out |= GPIO_LCD_CS_N | GPIO_LCD_MODE | GPIO_LCD_RST_N;
+	misc_regs->gpio.out |=  MISC_GPIO_LCD_CS_N | MISC_GPIO_LCD_MODE | MISC_GPIO_LCD_RST_N;
 
 	wait_ms(120);
 
-	gpio_regs->out &= ~GPIO_LCD_CS_N;
+	misc_regs->gpio.out &= ~MISC_GPIO_LCD_CS_N;
 
 	// Play init sequence
 	lcd_play(lcd_init_data, sizeof(lcd_init_data));

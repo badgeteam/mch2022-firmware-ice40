@@ -1,5 +1,5 @@
 /*
- * gpio_wb.v
+ * misc_wb.v
  *
  * vim: ts=4 sw=4
  *
@@ -9,7 +9,7 @@
 
 `default_nettype none
 
-module gpio_wb #(
+module misc_wb #(
 	parameter integer N = 12
 )(
 	// GPIO pads
@@ -103,4 +103,4 @@ module gpio_wb #(
 		.OUTPUT_ENABLE (gpio_oe)
 	);
 
-endmodule // gpio_wb
+endmodule // misc_wb

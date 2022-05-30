@@ -3,10 +3,10 @@ PROJ := selftest
 
 PROJ_DEPS := no2ice40 no2misc no2qpimem spi_slave
 PROJ_RTL_SRCS := $(addprefix rtl/, \
-	gpio_wb.v \
 	lcd_phy.v \
 	lcd_wb.v \
 	memtest.v \
+	misc_wb.v \
 	picorv32_ice40_regs.v \
 	picorv32.v \
 	soc_bram.v \
