@@ -23,8 +23,7 @@ static char _printf_buf[128];
 
 void console_init(void)
 {
-	uart_regs->clkdiv = 28;	/* 1 Mbaud with clk=30MHz */
-//	uart_regs->clkdiv = 13;	/* 1 Mbaud with clk=15MHz */
+	uart_regs->clkdiv = (SYS_CLK_HZ / 1000000) - 2; /* 1 Mbaud */
 }
 
 char getchar(void)

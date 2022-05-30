@@ -7,6 +7,8 @@
 
 #pragma once
 
+#define SYS_CLK_HZ	30000000
+
 #define MISC_BASE	0x80000000
 #define UART_BASE	0x81000000
 #define LED_BASE	0x82000000
