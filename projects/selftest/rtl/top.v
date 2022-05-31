@@ -67,6 +67,9 @@ module top (
 
 	wire [(32*WN)-1:0] wb_rdata_flat;
 
+	// Misc
+	wire [11:0] gpio_in;
+
 	// Memory interface
 	wire [31:0] mi_addr;
 	wire [ 6:0] mi_len;
@@ -90,6 +93,7 @@ module top (
 	wire        qpi_phy_cs_o;
 
 	// LCD PHY
+	wire        lcd_phy_ena;
 	wire  [7:0] lcd_phy_data;
 	wire        lcd_phy_rs;
 	wire        lcd_phy_valid;
@@ -163,13 +167,14 @@ module top (
 	misc_wb #(
 		.N(12)
 	) misc_I (
-		.gpio({
+		.gpio_pads({
 			irq_n,		// [11]
 			lcd_cs_n,	// [10]
 			lcd_mode,	// [ 9]
 			lcd_rst_n,	// [ 8]
 			pmod		// [ 7:0]
 		}),
+		.gpio_in  (gpio_in),
 		.lcd_fmark(lcd_phy_fmark_stb),
 		.wb_addr  (wb_addr[2:0]),
 		.wb_rdata (wb_rdata[0]),
@@ -342,6 +347,7 @@ module top (
 		.lcd_rs        (lcd_rs),
 		.lcd_wr_n      (lcd_wr_n),
 		.lcd_fmark     (lcd_fmark),
+		.phy_ena       (lcd_phy_ena),
 		.phy_data      (lcd_phy_data),
 		.phy_rs        (lcd_phy_rs),
 		.phy_valid     (lcd_phy_valid),
@@ -350,6 +356,9 @@ module top (
 		.clk           (clk_1x),
 		.rst           (rst)
 	);
+
+	assign lcd_phy_ena = gpio_in[9];
+
 
 	// SPI Messages [6]
 	// ------------

@@ -12,8 +12,9 @@
 module misc_wb #(
 	parameter integer N = 12
 )(
-	// GPIO pads
-	inout  wire [N-1:0] gpio,
+	// GPIO
+	inout  wire [N-1:0] gpio_pads,
+	output wire [N-1:0] gpio_in,
 
 	// LCD fmark
 	input  wire        lcd_fmark,
@@ -119,15 +120,17 @@ module misc_wb #(
 
 	SB_IO #(
 		.PIN_TYPE(6'b1101_00),   // Reg input, Reg+RegOE output
-		.PULLUP(1'b0),
+		.PULLUP(1'b1),
 		.IO_STANDARD("SB_LVCMOS")
 	) iob_I[N-1:0] (
-		.PACKAGE_PIN   (gpio),
+		.PACKAGE_PIN   (gpio_pads),
 		.INPUT_CLK     (clk),
 		.OUTPUT_CLK    (clk),
 		.D_IN_0        (gpio_i),
 		.D_OUT_0       (gpio_o),
 		.OUTPUT_ENABLE (gpio_oe)
 	);
+
+	assign gpio_in = gpio_i;
 
 endmodule // misc_wb
