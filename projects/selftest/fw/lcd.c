@@ -98,6 +98,7 @@ lcd_init(void)
 
 		/* Rise RST_n */
 	gpio_set_val(MISC_GPIO_LCD_RST_N, MISC_GPIO_LCD_RST_N);
+	gpio_set_dir(MISC_GPIO_LCD_RST_N, false);
 
 		/* Wait 120 ms for LCD to complete reset */
 	delay_ms(120);
