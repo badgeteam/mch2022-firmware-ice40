@@ -28,4 +28,7 @@ uint32_t gpio_get_val(uint32_t pins);
 void delay_us(unsigned int us);
 void delay_ms(unsigned int ms);
 
+uint32_t cycles_now(void);
+bool     cycles_elapsed_ms(uint32_t ref, unsigned int ms);
+
 int measure_framerate(void);

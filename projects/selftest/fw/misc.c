@@ -85,6 +85,20 @@ delay_ms(unsigned int ms)
 }
 
 
+uint32_t
+cycles_now(void)
+{
+	return misc_regs->cnt.cycles;
+}
+
+bool
+cycles_elapsed_ms(uint32_t ref, unsigned int ms)
+{
+	unsigned int cycles = (ms * (SYS_CLK_HZ / 1000));
+	return ((misc_regs->cnt.cycles - ref) >= cycles);
+}
+
+
 int
 measure_framerate(void)
 {
