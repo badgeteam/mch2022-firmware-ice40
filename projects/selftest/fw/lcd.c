@@ -83,6 +83,14 @@ lcd_play(const uint8_t *seq, const unsigned int len)
 }
 
 void
+lcd_keep_reset(void)
+{
+	/* Just assert reset */
+	gpio_set_val(MISC_GPIO_LCD_RST_N, 0);
+	gpio_set_dir(MISC_GPIO_LCD_RST_N, true);
+}
+
+void
 lcd_init(void)
 {
 	/* Disable pass-through */

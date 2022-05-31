@@ -20,6 +20,7 @@ enum lcd_pattern {
 	LCD_PATTERN_BARS  = 16,
 };
 
+void lcd_keep_reset(void);
 void lcd_init(void);
 void lcd_fill(enum lcd_pattern pat);
 void lcd_passthrough(bool enable);
