@@ -111,18 +111,18 @@ module top(
     if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
   end
 
-  wire joystick_down  = buttonstate[24];
-  wire joystick_up    = buttonstate[25];
-  wire joystick_left  = buttonstate[26];
-  wire joystick_right = buttonstate[27];
-  wire joystick_press = buttonstate[28];
-  wire home           = buttonstate[29];
-  wire menu           = buttonstate[30];
-  wire select         = buttonstate[31];
+  wire joystick_down  = buttonstate[16];
+  wire joystick_up    = buttonstate[17];
+  wire joystick_left  = buttonstate[18];
+  wire joystick_right = buttonstate[19];
+  wire joystick_press = buttonstate[20];
+  wire home           = buttonstate[21];
+  wire menu           = buttonstate[22];
+  wire select         = buttonstate[23];
 
-  wire start          = buttonstate[16];
-  wire accept         = buttonstate[17];
-  wire back           = buttonstate[18];
+  wire start          = buttonstate[24];
+  wire accept         = buttonstate[25];
+  wire back           = buttonstate[26];
 
   /*
 Bits are mapped to the following keys:
