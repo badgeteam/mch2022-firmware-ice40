@@ -61,7 +61,7 @@ bool
 mt_run(uint32_t size, bool debug)
 {
 	uint32_t base;
-	bool ok = true;
+	int err = 0;
 
 	/* Fill buffer memory */
 	for (int i=0; i<64; i++)
@@ -87,15 +87,18 @@ mt_run(uint32_t size, bool debug)
 		/* Check result */
 		if (!(mt_regs->cmd & 2)) {
 			printf("Error @ %08x\n", base);
-			ok = false;
+			err++;
 
 			if (debug) {
 				for (int i=0; i<32; i++)
 					printf("%02x %08x\n", i, mt_mem[i]);
 			}
+
+			if (err > 32)
+				return false;
 		}
 	}
 
 	/* Return overall result */
-	return ok;
+	return err == 0;
 }
