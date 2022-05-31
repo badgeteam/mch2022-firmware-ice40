@@ -82,16 +82,11 @@ lcd_play(const uint8_t *seq, const unsigned int len)
 		LCD_CSR_ADDR(0);
 }
 
-bool
+void
 lcd_init(void)
 {
 	/* Disable pass-through */
 	lcd_regs->mux = 0;
-
-	/* Check LCD is assigned to FPGA */
-	gpio_set_dir(MISC_GPIO_LCD_MODE, false);
-	if (!gpio_get_val(MISC_GPIO_LCD_MODE))
-		return false;
 
 	/* GPIO setup & reset */
 		/* Set direction and CS_n=1, RST_n=0 */
@@ -112,9 +107,6 @@ lcd_init(void)
 
 	/* Play init sequence */
 	lcd_play(lcd_init_data, sizeof(lcd_init_data));
-
-	/* Done */
-	return true;
 }
 
 void
