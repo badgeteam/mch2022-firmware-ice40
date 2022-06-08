@@ -1,0 +1,62 @@
+
+;------------------------------------------------------------------------------
+;  Ledcomm
+;------------------------------------------------------------------------------
+
+With this project, you can use a LED as an optical terminal!
+
+You need two badges and a pair of identical
+
+ - red
+ - clear, high brightness
+ - round 3mm or 5mm
+
+LEDs.
+
+Yellow ones may work also; green and blue ones won't do the trick
+as we need direct bandgap semiconductors that are sensitive to their
+own emitted wavelengths.
+
+Insert your LED into the PMOD header of the badge with the
+
+  anode   to pin 1   and
+  cathode to pin 2
+
+as printed on the badge next to the connector.
+
+With the bitstream loaded, the LED will shine brightly.
+If you mix up anode and cathode, it will shine dimly.
+
+Connect terminal to /dev/ttyACM1 with 1200 baud 8N1.
+
+Do the same with the other badge, connected to a different computer.
+
+The RGB led on the badge shows link status:
+
+  * Bright green: Waiting for link
+  * Dimly  green: Link detected
+
+  * Blue flash: UART    --> Ledcomm outgoing data flow
+  * Red  flash: Ledcomm --> UART    incoming data flow
+
+Enjoy your bidirectional optical link using a simple LED on each side!
+
+As it is possible to wait for an incoming link both in bright and dark state,
+you can use a human-readable indicator LED as debug port at the same time.
+
+;------------------------------------------------------------------------------
+;  Theory of operation
+;------------------------------------------------------------------------------
+
+The idea of brightness measurement using a LED connected with both pins
+by reverse-charging the junction capacitance and waiting for discharge
+due to photocurrent is outlined here:
+
+https://merl.com/publications/docs/TR2003-35.pdf
+
+The actual protocol for data transmission differs slightly,
+here is a description of the one in use:
+
+http://mecrisp.sourceforge.net/ledcomm.htm
+
+Additionally, this Ledcomm implementation also supports flow control!
