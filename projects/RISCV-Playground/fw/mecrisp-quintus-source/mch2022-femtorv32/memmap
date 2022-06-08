@@ -1,0 +1,10 @@
+
+MEMORY
+{
+   rom(RX)   : ORIGIN = 0x00010000, LENGTH = 0x4000
+}
+
+SECTIONS
+{
+   .text : { *(.text*) } > rom
+}

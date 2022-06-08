@@ -1,0 +1,18 @@
+#!/bin/sh
+
+mkdir -p build
+rm -f build/*
+
+echo "Synthesize design..."
+
+if
+  yosys  -q -p "synth_ice40 -top riscv_playground -json build/riscv_playground.json -blif build/riscv_playground.blif -dsp -relut -abc2" riscv_playground.v;
+then
+  echo "Place and Route..."
+  nextpnr-ice40 --freq 12 --up5k --package sg48 --asc build/riscv_playground.txt --pcf mch2022-proto4.pcf --json build/riscv_playground.json --ignore-loops --pcf-allow-unconstrained --seed 11
+  echo "Create Bitstream..."
+  icepack build/riscv_playground.txt riscv_playground.bin -s
+  echo "Finished."
+fi
+
+rm -f build/*

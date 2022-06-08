@@ -1,0 +1,50 @@
+
+;------------------------------------------------------------------------------
+;  RISC-V Playground
+;------------------------------------------------------------------------------
+
+This projects contains an example for a complete RISC-V RV32IMC system
+based on the FemtoRV32-Gracilis written by Bruno Levy and Matthias Koch:
+
+https://github.com/BrunoLevy/learn-fpga/
+https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/PROCESSOR/femtorv32_gracilis.v
+
+Peripherals included for default:
+
+  - Textmode LCD driver with 7-Bit ASCII font
+  - Random number generator
+  - GPIO registers for PMOD pin access
+  - Timer tick interrupt
+  - LEDs
+  - UART terminal, 115200 Baud 8N1
+  - 10 kb initialised RAM
+  - 128 kb uninitialised RAM
+
+;------------------------------------------------------------------------------
+;  Memory map and IO
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+;  Firmware
+;------------------------------------------------------------------------------
+
+Example software is work-in-progress.
+
+Currently it runs Mecrisp-Quintus, a 32 Bit Forth implementation.
+
+http://mecrisp.sourceforge.net/
+
+The binary is LZ4 compressed and split in two parts to fit into
+the initialised RAM area and the initial text buffer contents.
+
+These parts are decompressed on boot into the uninitialised RAM area,
+with a decompressor modified from:
+
+https://github.com/enthusi/lz4_rv32i_decode
+
+;------------------------------------------------------------------------------
+;  Simulation
+;------------------------------------------------------------------------------
+
+An absolute minimum simulation framework is provided that allows to
+relay UART communcation to terminal for quick firmware testing.

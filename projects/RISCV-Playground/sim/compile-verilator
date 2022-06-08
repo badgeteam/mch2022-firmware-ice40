@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -f obj_dir/*
+cd ../rtl
+verilator --l2-name v -Wall --cc -DVERILATOR=1 --top-module riscv_playground --exe sim_main.cpp ../sim/bench.v riscv_playground.v
+mv obj_dir ../sim
+cd ../sim
+make -C obj_dir CXXFLAGS="-fPIC" OPT_FAST="-O2" -f Vriscv_playground.mk Vriscv_playground
+mv obj_dir/Vriscv_playground ./
