@@ -208,10 +208,10 @@ module riscv_playground(
 
    // Internal signals for textmode generation
 
-   reg toggle;
-   reg fmark_sync1;
-   reg fmark_sync2;
-   reg updating;
+  reg toggle = 0;
+  reg fmark_sync1 = 0;
+  reg fmark_sync2 = 0;
+  reg updating = 0;
 
    reg [8:0] xpos; // 0 to 320-1
    reg [7:0] ypos; // 0 to 240-1
@@ -238,6 +238,9 @@ module riscv_playground(
 
      toggle <= ~toggle; // Toggle between high and low part of data to LCD and between logic and software read access.
 
+    characterindex <= 0;
+    fontrow <= 0;
+
      // Synchronise incoming asynchronous VSYNC signal to clk
 
      fmark_sync1 <= lcd_fmark;
@@ -248,7 +251,7 @@ module riscv_playground(
      if (fmark_sync2 & ~updating) // VSYNC active and not yet updating?
      begin
        xpos <= 0;
-       ypos <= 0;
+      ypos <= 1;
 
        data0 <= {1'b0, 8'h00}; //   NOP command
        data1 <= {1'b0, 8'h2C}; // RAMWR command
@@ -281,7 +284,7 @@ module riscv_playground(
                 fontrow <= ypos[2:0];
 
                 if (ypos == 239) begin xpos <= xpos + 1; ypos <= 0; end else ypos <= ypos + 1;
-                updating <= ~((xpos == 320) & (ypos == 0));
+               updating <= ~((xpos == 320) & (ypos == 1));
               end
          endcase
 
