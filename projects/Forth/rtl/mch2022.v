@@ -285,10 +285,10 @@ module top(input clk_in, // 12 MHz
 
   // Internal signals for textmode generation
 
-  reg sequence;
-  reg fmark_sync1;
-  reg fmark_sync2;
-  reg updating;
+  reg toggle = 0;
+  reg fmark_sync1 = 0;
+  reg fmark_sync2 = 0;
+  reg updating = 0;
 
   reg [8:0] xpos; // 0 to 320-1
   reg [7:0] ypos; // 0 to 240-1
@@ -305,15 +305,18 @@ module top(input clk_in, // 12 MHz
 
     // Reads from font data set & character buffer
 
-    char   <= characters[sequence ? characterindex : lcd_addr            ]; // 7-Bit ASCII. Using char[7] for alternate colors.
-    bitmap <=       font[sequence ? lcd_addr       : {char[6:0], fontrow}]; // 8x8 pixel font bitmap data.
+    char   <= characters[toggle ? characterindex : lcd_addr            ]; // 7-Bit ASCII. Using char[7] for alternate colors.
+    bitmap <=       font[toggle ? lcd_addr       : {char[6:0], fontrow}]; // 8x8 pixel font bitmap data.
 
-    case (sequence)
+    case (toggle)
       0: read_font <= bitmap; // Software can read these values three clock cycles after setting the address.
       1: read_char <= char;
     endcase
 
-    sequence <= ~sequence; // Toggle between high and low part of data to LCD and between logic and software read access.
+    toggle <= ~toggle; // Toggle between high and low part of data to LCD and between logic and software read access.
+
+    characterindex <= 0;
+    fontrow <= 0;
 
     // Synchronise incoming asynchronous VSYNC signal to clk
 
@@ -325,13 +328,13 @@ module top(input clk_in, // 12 MHz
     if (fmark_sync2 & ~updating) // VSYNC active and not yet updating?
     begin
       xpos <= 0;
-      ypos <= 0;
+      ypos <= 1;
 
       data0 <= {1'b0, 8'h00}; //   NOP command
       data1 <= {1'b0, 8'h2C}; // RAMWR command
 
       lcd_write <= 0;       // Nothing to write
-      updating <= sequence; // Start when sequence is high, updating starts with sequence low in next cycle.
+      updating <= toggle; // Start when toggle is high, updating starts with toggle low in next cycle.
     end
     else
     begin
@@ -339,7 +342,7 @@ module top(input clk_in, // 12 MHz
       begin
         lcd_write <= 1;
 
-        case (sequence)
+        case (toggle)
           0: begin
                {lcd_rs, lcd_d} <= data0;
                colorswitch <= char[7]; // Using MSB of character to switch to a different set of colors
@@ -358,7 +361,7 @@ module top(input clk_in, // 12 MHz
                fontrow <= ypos[2:0];
 
                if (ypos == 239) begin xpos <= xpos + 1; ypos <= 0; end else ypos <= ypos + 1;
-               updating <= ~((xpos == 320) & (ypos == 0));
+               updating <= ~((xpos == 320) & (ypos == 1));
              end
         endcase
 
