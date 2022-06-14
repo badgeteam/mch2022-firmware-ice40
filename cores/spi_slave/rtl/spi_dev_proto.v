@@ -36,6 +36,10 @@ module spi_dev_proto (
 	input  wire [7:0] pw_rdata,
 	input  wire       pw_rstb,
 
+		// IRQ status bits and IRQ output
+	input  wire [3:0] pw_irq,
+	output reg        irq,
+
 	// Clock / Reset
 	input  wire clk,
 	input  wire rst
@@ -99,7 +103,7 @@ module spi_dev_proto (
 	assign sd_status = {
 		rf_valid,	//   [7] Response pending
 		3'b000,		// [6:4] RFU
-		4'b0000		// [3:0] IRQs (not implemented)
+		pw_irq		// [3:0] IRQs status
 	};
 
 	// Read from response data buffer
@@ -119,6 +123,10 @@ module spi_dev_proto (
 
 	always @(posedge clk)
 		rf_pop <= csn_rise & sd_cmd_is_resp_ack & sd_was_resp_valid;
+
+	// IRQ handling
+	always @(posedge clk)
+		irq <= |pw_irq;
 
 
 	// Response buffer
