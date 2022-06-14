@@ -1,9 +1,8 @@
 # Project config
 PROJ := selftest
 
-PROJ_DEPS := no2ice40 no2misc no2qpimem spi_slave
+PROJ_DEPS := no2ice40 no2misc no2qpimem lcd spi_slave
 PROJ_RTL_SRCS := $(addprefix rtl/, \
-	lcd_phy.v \
 	lcd_wb.v \
 	memtest.v \
 	misc_wb.v \
