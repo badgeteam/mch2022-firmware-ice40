@@ -1,7 +1,7 @@
 # Project config
 PROJ := spi_skeleton
 
-PROJ_DEPS := spi_slave no2ice40
+PROJ_DEPS := spi_slave no2ice40 no2misc
 PROJ_RTL_SRCS := $(addprefix rtl/, \
 	sysmgr.v \
 )

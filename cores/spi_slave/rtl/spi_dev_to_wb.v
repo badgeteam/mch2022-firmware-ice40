@@ -24,6 +24,12 @@ module spi_dev_to_wb #(
 
 	input  wire        pw_end,
 
+	output wire        pw_req,
+	input  wire        pw_gnt,
+
+	output wire  [7:0] pw_rdata,
+	output wire        pw_rstb,
+
 	// Wishbone
 	output reg  [31:0] wb_wdata,
 	input  wire [DL:0] wb_rdata,
@@ -51,6 +57,9 @@ module spi_dev_to_wb #(
 	reg   [1:0] state_nxt;
 
 	// Control
+	wire        ctrl_cmd_match;
+	reg         ctrl_active;
+	wire        ctrl_complete;
 	reg   [2:0] ctrl_mode;
 	reg         ctrl_data_ld;
 	reg         ctrl_addr_ld;
@@ -63,6 +72,13 @@ module spi_dev_to_wb #(
 	reg   [1:0] ws_cnt;
 	wire        ws_cnt_last;
 
+	// Wishbone control
+	reg  [31:0] wb_rdata_i;
+	reg  [31:0] wb_rdata_r;
+
+	reg  [CL:0] wb_cyc_pre;
+	wire        wb_ack_i;
+	reg         wb_ack_r;
 
 
 	// Control
@@ -84,29 +100,36 @@ module spi_dev_to_wb #(
 		// Transitions
 		case (state)
 			ST_IDLE:
-				if (pw_wstb & pw_wcmd & (pw_wdata == CMD_BYTE))
+				if (pw_wstb & ctrl_cmd_match)
 					state_nxt = ST_ADDR;
 
 			ST_ADDR:
 				if (pw_wstb & ws_cnt_last)
 					state_nxt = ST_DATA;
+				else if (ctrl_complete)
+					state_nxt = ST_IDLE;
 
 			ST_DATA:
 				if (pw_wstb & ws_cnt_last)
 					state_nxt = ST_WAIT;
+				else if (ctrl_complete)
+					state_nxt = ST_IDLE;
 
 			ST_WAIT:
 				if (wb_ack_r)
-					state_nxt = (ctrl_mode[1:0] == 2'b10) ? ST_ADDR : ST_DATA;
+					state_nxt = ctrl_mode[1] ? ST_ADDR : ST_DATA;
 
 		endcase
-
-		// If the transaction ends, reset, no matter what
-		if (pw_end)
-			state_nxt = ST_IDLE;
 	end
 
 	// Misc control signals
+	assign ctrl_cmd_match = pw_wcmd & (pw_wdata == CMD_BYTE);
+
+	always @(posedge clk)
+		ctrl_active <= (ctrl_active & ~pw_end) | (pw_wstb & ctrl_cmd_match);
+
+	assign ctrl_complete = ~ctrl_active & ~rs_valid[3];
+
 	always @(posedge clk)
 	begin
 		ctrl_data_ld <= pw_wstb & ws_cnt_last & (state == ST_DATA);
@@ -123,10 +146,14 @@ module spi_dev_to_wb #(
 		if (ctrl_addr_ld)
 			ctrl_mode <= ws_data[31:29];
 
+	// Request
+	assign pw_req = (state != ST_IDLE);
+
 
 	// Shift registers
 	// ---------------
 
+	// Write shift reg
 	always @(posedge clk)
 		if (pw_wstb)
 			ws_data <= { ws_data[23:0], pw_wdata };
@@ -142,16 +169,25 @@ module spi_dev_to_wb #(
 
 	assign ws_cnt_last = (ws_cnt == 2'b11);
 
+	// Read shift reg
+	reg [31:0] rs_data;
+	reg  [3:0] rs_valid;
+
+	always @(posedge clk)
+		if (wb_ack_r) begin
+			rs_data  <= wb_rdata_r;
+			rs_valid <= {4{~ctrl_mode[2] | (ctrl_mode[1:0] == 2'b11)}};
+		end else begin
+			rs_data  <= { rs_data[23:0], 8'h00 };
+			rs_valid <= { rs_valid[2:0],  1'b0 };
+		end
+
+	assign pw_rdata = rs_data[31:24];
+	assign pw_rstb  = rs_valid[3];
+
 
 	// Wishbone
 	// --------
-
-	reg [31:0] wb_rdata_i;
-	reg [31:0] wb_rdata_r;
-
-	reg [CL:0] wb_cyc_pre;
-	wire       wb_ack_i;
-	reg        wb_ack_r;
 
 	// Write data
 	always @(posedge clk)

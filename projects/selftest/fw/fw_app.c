@@ -11,338 +11,498 @@
 #include <string.h>
 
 #include "console.h"
+#include "lcd.h"
 #include "led.h"
+#include "memtest.h"
 #include "mini-printf.h"
-
-#include "config.h"
-
-
-static void
-wait_ms(int ms)
-{
-	while (ms--) {
-		// Complete guess ...
-		for (int i=0; i<2000; i++)
-			asm("nop");
-	}
-}
+#include "misc.h"
+#include "msg.h"
+#include "qpi.h"
 
 
 // ---------------------------------------------------------------------------
-// QPI driver
+// LED status reporting
 // ---------------------------------------------------------------------------
 
-struct wb_qpi {
-	union {
-		struct {
-			uint32_t csr;
-			uint32_t _rsvd0;
-			uint32_t _rsvd1;
-			uint32_t rf;
-		};
-		uint32_t cmd[0];
-	};
-} __attribute__((packed,aligned(4)));
-
-static volatile struct wb_qpi * const qpi_regs = (void*)(QPI_BASE);
-
-
-static void
-_qpi_begin(int cs)
-{
-	// Request external control
-	qpi_regs->csr = 0x00000004 | (cs << 4);
-	qpi_regs->csr = 0x00000002 | (cs << 4);
-
-}
-
-static void
-_qpi_end(void)
-{
-	// Release external control
-	qpi_regs->csr = 0x00000004;
-}
-
-static void
-qpi_xfer(const uint8_t cmd,
-         const uint8_t *tx_buf, const unsigned int tx_len,
-                                const unsigned int dummy_len,
-               uint8_t *rx_buf, const unsigned int rx_len)
-{
-	// FIXME
-}
-
-static void
-spi_xfer(const uint8_t *tx_buf, const unsigned int tx_len,
-                                const unsigned int dummy_len,
-               uint8_t *rx_buf, const unsigned int rx_len)
-{
-	uint8_t *buf;
-	int l, o;
-
-	// Prepare buffer;
-	l = tx_len + dummy_len + rx_len;
-	buf = alloca((l+3)&~3);
-
-	memcpy(buf, tx_buf, tx_len);
-	memset(buf+tx_len, 0, l-tx_len);
-
-	// Start transaction
-	_qpi_begin(0);
-
-	// Run
-	for (o=0; l>0; l-=4,o+=4)
-	{
-		// Word and command
-		uint32_t w =
-			(buf[o+0] << 24) |
-			(buf[o+1] << 16) |
-			(buf[o+2] <<  8) |
-			(buf[o+3] <<  0);
-
-		int c = (l >= 4) ? 0x13 : (0x10 + l - 1);
-		int s = (l >= 4) ? 0 : (8*(4-l));
-
-		// Issue
-		qpi_regs->cmd[c] = w;
-		uint32_t wr = qpi_regs->rf;
-#if 0
-		printf("%08x %08x\n", w, wr);
-#endif
-
-		// Get RX
-		wr <<= s;
-
-		buf[o+0] = wr >> 24;
-		buf[o+1] = wr >> 16;
-		buf[o+2] = wr >>  8;
-		buf[o+3] = wr >>  0;
-	}
-
-	// End transaction
-	_qpi_end();
-
-	// Return RX part
-	if (rx_len)
-		memcpy(rx_buf, buf+tx_len+dummy_len, rx_len);
-}
-
-
-// ---------------------------------------------------------------------------
-// Memory tester
-// ---------------------------------------------------------------------------
-
-struct wb_memtest {
-	uint32_t cmd;
-	uint32_t addr;
-} __attribute__((packed,aligned(4)));
-
-static volatile struct wb_memtest * const mt_regs = (void*)(MEMTEST_BASE);
-static volatile uint32_t * const mt_mem = (void*)(MEMTEST_BASE + 0x400);
-
-#define MT_CMD_DUAL		(1 << 18)
-#define MT_CMD_CHECK_RST	(1 << 17)
-#define MT_CMD_READ		(1 << 16)
-#define MT_CMD_WRITE		(0 << 16)
-#define MT_CMD_BUF_ADDR(x)	((x) << 8)
-#define MT_CMD_LEN(x)		((x) - 1)
-
-static void
-mt_cmd_write(uint32_t ram_addr, uint32_t buf_addr, uint32_t len)
-{
-	mt_regs->addr = ram_addr;
-	mt_regs->cmd =
-		MT_CMD_WRITE |
-		MT_CMD_BUF_ADDR(buf_addr) |
-		MT_CMD_LEN(len);
-
-	while (!(mt_regs->cmd & 1));
-}
-
-static void
-mt_cmd_read(uint32_t ram_addr, uint32_t buf_addr, uint32_t len, bool check_reset)
-{
-	mt_regs->addr = ram_addr;
-	mt_regs->cmd =
-		(check_reset ? MT_CMD_CHECK_RST : 0) |
-		MT_CMD_READ |
-		MT_CMD_BUF_ADDR(buf_addr) |
-		MT_CMD_LEN(len);
-
-	while (!(mt_regs->cmd & 1));
-}
+enum led_status {
+	STATUS_PREBOOT = 0,
+	STATUS_RUN     = 1,
+	STATUS_GOOD    = 2,
+	STATUS_BAD     = 3
+};
 
 static bool
-mt_run(uint32_t size, bool debug)
+led_set_status(enum led_status s)
 {
-	uint32_t base;
-	bool ok = true;
+	switch (s) {
+	case STATUS_PREBOOT:
+		/* Pre-boot continuous blue */
+		led_color(4, 4, 24);
+		led_blink(false, 0, 0);
+		led_breathe(false, 0, 0);
+		break;
 
-	// Fill memory
-	for (int i=0; i<64; i++)
-		mt_mem[i] =
-			(((i << 2) + 0) << 24) |
-			(((i << 2) + 1) << 16) |
-			(((i << 2) + 2) <<  8) |
-			(((i << 2) + 3) <<  0) ;
+	case STATUS_RUN:
+		/* Running: slow breathe blue */
+		led_color(4, 4, 24);
+		led_blink(true, 200, 1000);
+		led_breathe(true, 100, 200);
+		break;
 
-	// Iterate over 8 Mbytes address space
-	for (base=0; base<size; base+=32)
-	{
-		// Issue write
-		mt_cmd_write(base, 0, 32);
+	case STATUS_GOOD:
+		/* Good: continuous green */
+		led_color(0, 16, 0);
+		led_blink(false, 0, 0);
+		led_breathe(false, 0, 0);
+		break;
+
+	case STATUS_BAD:
+		/* Bad: agressive red blink */
+		led_color(16, 0, 0);
+		led_blink(true, 100, 100);
+		led_breathe(false, 0, 0);
+		break;
+
+	default:
+		return false;
 	}
 
-	// Iterate over 8 Mbytes address space
-	for (base=0; base<size; base+=32)
-	{
-		// Issue read
-		mt_cmd_read(base, 0, 32, true);
-
-		// Check result
-		if (!(mt_regs->cmd & 2)) {
-			printf("Error @ %08x\n", base);
-			ok = false;
-
-			if (debug) {
-				for (int i=0; i<32; i++)
-					printf("%02x %08x\n", i, mt_mem[i]);
-			}
-		}
-	}
-
-	// Return overall result
-	return ok;
+	return true;
 }
 
 
 // ---------------------------------------------------------------------------
-// GPIO
+// Test routines
 // ---------------------------------------------------------------------------
 
-struct wb_gpio {
-	uint32_t oe;
-	uint32_t out;
-	uint32_t in;
-} __attribute__((packed,aligned(4)));
+#define SOC_CMD_PING			0x00
+#define SOC_CMD_PING_PARAM		0xc0ffee
+#define SOC_CMD_PING_RESP		0xcafebabe
 
-static volatile struct wb_gpio * const gpio_regs = (void*)(GPIO_BASE);
+#define SOC_CMD_RGB_STATE_SET		0x10
+#define SOC_CMD_IRQN_SET		0x11
+#define SOC_CMD_LCD_RGB_CYCLE_SET	0x12
+#define SOC_CMD_PMOD_CYCLE_SET		0x13
+#define SOC_CMD_LCD_PASSTHROUGH_SET	0x14
 
-#define GPIO_IRQ_N	(1 << 11)
-#define GPIO_LCD_CS_N	(1 << 10)
-#define GPIO_LCD_MODE	(1 <<  9)
-#define GPIO_LCD_RST_N	(1 <<  8)
-#define GPIO_PMOD(n)	(1 << (n))
+#define SOC_CMD_PSRAM_TEST		0x20
+#define SOC_CMD_UART_LOOPBACK_TEST	0x21
+#define SOC_CMD_PMOD_OPEN_TEST		0x22
+#define SOC_CMD_PMOD_PLUG_TEST		0x23
+#define SOC_CMD_LCD_INIT_TEST		0x24
 
+#define SOC_CMD_LCD_CHECK_MODE		0x30
 
-// ---------------------------------------------------------------------------
-// LCD
-// ---------------------------------------------------------------------------
-
-struct wb_lcd {
-	uint32_t csr;
-} __attribute__((packed,aligned(4)));
-
-static volatile struct wb_lcd * const lcd_regs = (void*)(LCD_BASE);
-static volatile uint32_t      * const lcd_mem  = (void*)(LCD_BASE + 0x0800);
-
-#define LCD_CSR_BUSY	(1 << 31)
-#define LCD_CSR_LEN(l)	(((l)-1) << 16)
-#define LCD_CSR_ADDR(a)	(a)
+#define SOC_RESP_OK		0x00000000
+#define SOC_RESP_ERR_FAIL	0xffbadbad
+#define SOC_RESP_ERR_INVAL	0xdeaddead
+#define SOC_RESP_ERR(n)		(0xff000000 | (n))
 
 
-static const uint8_t lcd_init_data[] = {
-	 3, 0xef, 0x03, 0x80, 0x02,		// ? (undocumented cmd)
-	 3, 0xcf, 0x00, 0xc1, 0x30,		// Power control B
-	 4, 0xed, 0x64, 0x03, 0x12, 0x81,	// Power on sequence control
-	 3, 0xe8, 0x85, 0x00, 0x78,		// Driver timing control A
-	 5, 0xcb, 0x39, 0x2c, 0x00, 0x34, 0x02,	// Power control A
-	 1, 0xf7, 0x20,				// Pump ratio control
-	 2, 0xea, 0x00, 0x00,			// Driver timing control B
-	 1, 0xc0, 0x23,				// Power control 1
-	 1, 0xc1, 0x10,				// Power control 2
-	 2, 0xc5, 0x3e, 0x28,			// VCOM Control 1
-	 1, 0xc7, 0x86,				// VCOM Control 2
-	 1, 0x3a, 0x55,				// Pixel Format: 16b
-	 3, 0xb6, 0x08, 0x82, 0x27,		// Display Function Control
-	 1, 0xf2, 0x00,				// 3 Gamma control disable
-	 1, 0x26, 0x01,				// Gamma Set
-	15, 0xe0, 0x0f, 0x31, 0x2b, 0x0c, 0x0e,	// Positive Gamma Correction
-	          0x08, 0x4e, 0xf1, 0x37, 0x07,
-	          0x10, 0x03, 0x0e, 0x09, 0x00,
-	15, 0xe1, 0x00, 0x0e, 0x14, 0x03, 0x11,	// Negative Gamma Correction
-	          0x07, 0x31, 0xc1, 0x48, 0x08,
-	          0x0f, 0x0c, 0x31, 0x36, 0x0f,
-	 0, 0x11,				// Sleep Out
-	 0, 0x29,				// Display ON
-	 1, 0x35, 0x00,				// Tearing Effect Line ON
-	 1, 0x36, 0x08,				// Memory Access Control
-	 4, 0x2a, 0x00, 0x00, 0x00, 0xef,	// Column Address Set
-	 4, 0x2b, 0x00, 0x00, 0x01, 0x3f,	// Page Address Set
+static enum led_status g_led = STATUS_PREBOOT;
+static int g_cycle_lcd_rgb = -1;
+static int g_cycle_pmod = -1;
+
+
+static uint32_t
+h_cmd_ping(uint32_t param)
+{
+	if (param == SOC_CMD_PING_PARAM)
+		return 0xcafebabe;
+	else
+		return SOC_RESP_ERR_FAIL;
+}
+
+static uint32_t
+h_cmd_rgb_state_set(uint32_t param)
+{
+	if (led_set_status(param)) {
+		g_led = param;
+		return SOC_RESP_OK;
+	} else {
+		return SOC_RESP_ERR_FAIL;
+	}
+}
+
+static uint32_t
+h_cmd_irqn_set(uint32_t param)
+{
+	if (param) {
+		/* Assert INT_n (i.e. force low !) */
+		gpio_set_val(MISC_GPIO_IRQ_N, 0);
+		gpio_set_dir(MISC_GPIO_IRQ_N, true);
+	} else {
+		/* Release INT_n (Hi-Z) */
+		gpio_set_dir(MISC_GPIO_IRQ_N, false);
+	}
+
+	return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_lcd_rgb_cycle_set(uint32_t param)
+{
+	/* Start cycle ... */
+	if (param) {
+		/* Enable cycling */
+		g_cycle_lcd_rgb = 0;
+	}
+
+	/* ... or Stop cycle */
+	else {
+		/* Restore LED */
+		led_set_status(g_led);
+
+		/* Restore LCD */
+		lcd_fill(LCD_PATTERN_BARS);
+
+		/* Stop cycling */
+		g_cycle_lcd_rgb = -1;
+	}
+
+	/* Done */
+	return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_pmod_cycle_set(uint32_t param)
+{
+	/* Start cycle ... */
+	if (param) {
+		/* Set PMOD to Output */
+		gpio_set_val(MISC_GPIO_PMOD_ALL, 0);
+		gpio_set_dir(MISC_GPIO_PMOD_ALL, true);
+
+		/* Enable cycling */
+		g_cycle_pmod = 0;
+	}
+
+	/* ... or Stop cycle */
+	else {
+		/* Set PMOD to Hi-Z */
+		gpio_set_dir(MISC_GPIO_PMOD_ALL, false);
+
+		/* Stop cycling */
+		g_cycle_pmod = -1;
+	}
+
+	/* Done */
+	return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_lcd_passthrough_set(uint32_t param)
+{
+	lcd_passthrough(param != 0);
+	return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_psram_test(uint32_t param)
+{
+	/* Enable QPI */
+	const uint8_t tx_buf[1] = { 0x35 };
+	spi_xfer(tx_buf, 1, 0, NULL, 0);
+
+	/* Run full test */
+	return mt_run(0x200000, false) ? SOC_RESP_OK : SOC_RESP_ERR_FAIL;
+}
+
+static uint32_t
+h_cmd_uart_loopback_test(uint32_t param)
+{
+	uint8_t buf[128];
+	bool ok = true;
+	int i;
+
+	/* Flush FIFO */
+	for (i = 0; i < 1024; i++)
+		if (getchar_nowait() < 0)
+			break;
+
+	if (i == 1024)
+		return SOC_RESP_ERR(1);
+
+	/* Generate random sequence */
+	buf[0] = 1;
+	for (i = 1; i < 128; i++)
+		buf[i] = (buf[i-1] << 1) ^ ((buf[i-1] & 0x80) ? 0x1d : 0x00);
+
+	/* Send it */
+	for (i = 0; i < 128; i++)
+		putchar(buf[i] ^ 0xa5);
+
+	/* Wait for it to go through */
+	delay_ms(10);
+
+	/* Validate response */
+	for (i = 0; i < 128; i++)
+		ok &= (buf[i] == getchar_nowait());
+
+	/* Return */
+	return ok ? SOC_RESP_OK : SOC_RESP_ERR_FAIL;
+}
+
+static uint32_t
+h_cmd_pmod_open_test(uint32_t param)
+{
+	uint32_t err_mask = 0;
+
+	/* Test each pin */
+	for (int i=0; i<8; i++)
+	{
+		uint32_t mask = MISC_GPIO_PMOD(i);
+
+		/* Set all pins to output '1' */
+		gpio_set_val(MISC_GPIO_PMOD_ALL, MISC_GPIO_PMOD_ALL);
+		gpio_set_dir(MISC_GPIO_PMOD_ALL, true);
+
+		/* Wait for charge */
+		delay_ms(1);
+
+		/* Set all pins to Hi-Z */
+		gpio_set_dir(MISC_GPIO_PMOD_ALL, false);
+
+		/* Wait to settle */
+		delay_ms(1);
+
+		/* Check everything is '1' */
+		err_mask |= gpio_get_val(MISC_GPIO_PMOD_ALL) ^ MISC_GPIO_PMOD_ALL;
+
+		/* Set one pin to output 0 */
+		gpio_set_dir(mask, true);
+		gpio_set_val(mask, 0);
+
+		/* Wait to settle */
+		delay_ms(1);
+
+		/* Check everything is '1' except for the pin */
+		err_mask |= gpio_get_val(MISC_GPIO_PMOD_ALL) ^ MISC_GPIO_PMOD_ALL ^ mask;
+	}
+
+	/* Set all pins to Hi-Z */
+	gpio_set_dir(MISC_GPIO_PMOD_ALL, false);
+
+	/* Return results */
+	if (err_mask)
+		return SOC_RESP_ERR(err_mask);
+	else
+		return SOC_RESP_OK;
+}
+
+static int
+_maj(uint32_t v)
+{
+	int cnt = 0;
+	for (int i=0; i<8; i++) {
+		cnt += (v & 1);
+		v >>= 1;
+	}
+	return cnt > 4;
+}
+
+static uint32_t
+h_cmd_pmod_plug_test(uint32_t param)
+{
+	uint32_t err_mask = 0;
+
+	/* Test each pin */
+	for (int i=0; i<8; i++)
+	{
+		uint32_t mask = MISC_GPIO_PMOD(i);
+
+		/* Set all pins to Hi-Z */
+		gpio_set_dir(MISC_GPIO_PMOD_ALL, false);
+
+		/* Set selected pin to 0 */
+		gpio_set_val(mask, 0);
+		gpio_set_dir(mask, true);
+
+		/* Wait to settle */
+		delay_ms(1);
+
+		/* Check everything is '0' */
+		if (_maj(gpio_get_val(MISC_GPIO_PMOD_ALL)) != 0)
+			err_mask |= mask;
+
+		/* Set selected pin to 1 */
+		gpio_set_val(mask, mask);
+		gpio_set_dir(mask, true);
+
+		/* Wait to settle */
+		delay_ms(1);
+
+		/* Check everything is '1' */
+		if (_maj(gpio_get_val(MISC_GPIO_PMOD_ALL)) != 1)
+			err_mask |= mask;
+	}
+
+	/* Set all pins to Hi-Z */
+	gpio_set_dir(MISC_GPIO_PMOD_ALL, false);
+
+	/* Return results */
+	if (err_mask)
+		return SOC_RESP_ERR(err_mask);
+	else
+		return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_lcd_init_test(uint32_t param)
+{
+	int f;
+
+	/* Check LCD is assigned to FPGA */
+	gpio_set_dir(MISC_GPIO_LCD_MODE, false);
+	if (!gpio_get_val(MISC_GPIO_LCD_MODE))
+		return SOC_RESP_ERR(1);
+
+	/* Force LCD to reset */
+	lcd_keep_reset();
+
+	/* Check there is no fmark */
+	f = measure_framerate();
+
+	if (f != 0)
+		return SOC_RESP_ERR(4);
+
+	/* Run init sequence */
+	lcd_init();
+
+	/* Fill LCD with pattern */
+	lcd_fill(LCD_PATTERN_BARS);
+
+	/* Check reported frame rate is within bound */
+	f = measure_framerate();
+
+	if (f == 0)
+		return SOC_RESP_ERR(5);
+	else if (f < 65)
+		return SOC_RESP_ERR(6);
+	else if (f > 85)
+		return SOC_RESP_ERR(7);
+
+	return SOC_RESP_OK;
+}
+
+static uint32_t
+h_cmd_lcd_check_mode(uint32_t param)
+{
+	if ((!!gpio_get_val(MISC_GPIO_LCD_MODE)) != (!!param))
+		return SOC_RESP_ERR_FAIL;
+
+	return SOC_RESP_OK;
+}
+
+
+typedef uint32_t (*msg_handler_t)(uint32_t param);
+
+const static struct {
+	uint8_t cmd;
+	msg_handler_t fn;
+} handlers[] = {
+	{ SOC_CMD_PING,			h_cmd_ping },
+	{ SOC_CMD_RGB_STATE_SET,	h_cmd_rgb_state_set },
+	{ SOC_CMD_IRQN_SET,		h_cmd_irqn_set },
+	{ SOC_CMD_LCD_RGB_CYCLE_SET,	h_cmd_lcd_rgb_cycle_set },
+	{ SOC_CMD_PMOD_CYCLE_SET,	h_cmd_pmod_cycle_set },
+	{ SOC_CMD_LCD_PASSTHROUGH_SET,	h_cmd_lcd_passthrough_set },
+	{ SOC_CMD_PSRAM_TEST,		h_cmd_psram_test },
+	{ SOC_CMD_UART_LOOPBACK_TEST,	h_cmd_uart_loopback_test },
+	{ SOC_CMD_PMOD_OPEN_TEST,	h_cmd_pmod_open_test },
+	{ SOC_CMD_PMOD_PLUG_TEST,	h_cmd_pmod_plug_test },
+	{ SOC_CMD_LCD_INIT_TEST,	h_cmd_lcd_init_test },
+	{ SOC_CMD_LCD_CHECK_MODE,       h_cmd_lcd_check_mode },
+	{ 0, NULL }	/* guard */
 };
 
 static void
-lcd_play(const uint8_t *seq, const unsigned int len)
+handle_message(void)
 {
-	// Wait for core to be ready
-	while (lcd_regs->csr & LCD_CSR_BUSY);
+	/* Get message */
+	uint32_t msg = msg_get_request();
 
-	// Write data
-	if (seq) {
-		for (int i=0; i<len; i++)
-			lcd_mem[i] = seq[i];
+	uint8_t  cmd = msg >> 24;
+	uint32_t param = msg & 0xffffff;
+
+	/* Find handler */
+	for (int i=0; handlers[i].fn; i++)
+	{
+		if (handlers[i].cmd == cmd)
+		{
+			msg_put_response(handlers[i].fn(param));
+			return;
+		}
 	}
 
-	// Run it !
-	lcd_regs->csr =
-		LCD_CSR_LEN(len) |
-		LCD_CSR_ADDR(0);
+	/* No handlers found */
+	msg_put_response(SOC_RESP_ERR_INVAL);
+}
+
+
+// ---------------------------------------------------------------------------
+// Cycles
+// ---------------------------------------------------------------------------
+
+static void
+cycle_lcd_rgb(void)
+{
+	enum lcd_pattern lp;
+	uint8_t r,g,b;
+
+	/* Active ? */
+	if (g_cycle_lcd_rgb < 0)
+		return;
+
+	/* Select color */
+	switch (g_cycle_lcd_rgb) {
+	case 0:
+		lp = LCD_PATTERN_RED;
+		r  = 16;
+		g  = 0;
+		b  = 0;
+		break;
+
+	case 1:
+		lp = LCD_PATTERN_GREEN;
+		r  = 0;
+		g  = 16;
+		b  = 0;
+		break;
+
+	case 2:
+		lp = LCD_PATTERN_BLUE;
+		r  = 0;
+		g  = 0;
+		b  = 16;
+		break;
+	}
+
+	/* Set RGB */
+	led_color(r, g, b);
+	led_blink(false, 0, 0);
+	led_breathe(false, 0, 0);
+
+	/* Fill LCD */
+	lcd_fill(lp);
+
+	/* Next color */
+	if (++g_cycle_lcd_rgb > 2)
+		g_cycle_lcd_rgb = 0;
 }
 
 static void
-lcd_init(void)
+cycle_pmod(void)
 {
-	// GPIO setup & reset
-	gpio_regs->out &= ~GPIO_LCD_RST_N;
-	gpio_regs->out |= GPIO_LCD_CS_N | GPIO_LCD_MODE;
+	/* Active ? */
+	if (g_cycle_pmod < 0)
+		return;
 
-	gpio_regs->oe  |= GPIO_LCD_CS_N | GPIO_LCD_MODE | GPIO_LCD_RST_N;
+	/* Set value */
+	gpio_set_val(MISC_GPIO_PMOD_ALL, MISC_GPIO_PMOD(g_cycle_pmod));
 
-	wait_ms(1);
-
-	gpio_regs->out |= GPIO_LCD_CS_N | GPIO_LCD_MODE | GPIO_LCD_RST_N;
-
-	wait_ms(120);
-
-	gpio_regs->out &= ~GPIO_LCD_CS_N;
-
-	// Play init sequence
-	lcd_play(lcd_init_data, sizeof(lcd_init_data));
-}
-
-static void
-lcd_color_screen(void)
-{
-	static uint8_t buf[242];
-
-	/* Fill buffer with color bars */
-	for (int i=0; i<240; i+=2) {
-		buf[i+2] = i;
-		buf[i+3] = i;
-	}
-
-	/* First write */
-	buf[0] = 240;
-	buf[1] = 0x2c;
-
-	lcd_play(buf, 242);
-
-	buf[1] = 0x3c;
-	lcd_play(buf, 242);
-
-	/* Loop over 319 * 2 chunks */
-	for (int i=0; i<319*2; i++)
-		lcd_play(NULL, 242);
+	/* Next pin */
+	g_cycle_pmod = (g_cycle_pmod + 1) & 7;
 }
 
 
@@ -350,139 +510,118 @@ lcd_color_screen(void)
 // Main
 // ---------------------------------------------------------------------------
 
-static void
-set_status(int s)
-{
-	switch (s) {
-	case 0:
-		/* Running: slow breathe */
-		led_color(16, 16, 16);
-		led_blink(true, 200, 1000);
-		led_breathe(true, 100, 200);
-		break;
-
-	case 1:
-		/* Done OK: continuous white */
-		led_color(16, 16, 16);
-		led_blink(false, 0, 0);
-		led_breathe(false, 0, 0);
-		break;
-
-	case 2:
-		/* Done error: agressive primary blink */
-		led_color(16, 0, 0);
-		led_blink(true, 100, 100);
-		led_breathe(false, 0, 0);
-		break;
-	}
-}
-
 void main()
 {
-	int cmd = 0;
+	uint32_t t;
 
 	/* Init console IO */
 	console_init();
-	puts("Booting selftest image..\n");
+	puts("MCH2022 iCE40 selftest\n");
 
 	/* LED */
 	led_init();
-	set_status(0);
+	led_set_status(STATUS_PREBOOT);
 	led_state(true);
 
-#if 1
-	/* Enable QPI */
-	{
-		const uint8_t tx_buf[1] = { 0x35 };
-		spi_xfer(tx_buf, 1, 0, NULL, 0);
-	}
-
-	/* Run memory test */
-	set_status( mt_run(0x200000, false) ? 1 : 2 );
-
-	/* LCD init */
-	lcd_init();
-	lcd_color_screen();
-#endif
+	/* Initial time */
+	t = cycles_now();
 
 	/* Main loop */
-	while (1)
-	{
-		/* Prompt ? */
-		if (cmd >= 0)
-			printf("Command> ");
+	while (1) {
+		/* Poll for message */
+		if (msg_pending())
+			handle_message();
 
-		/* Poll for command */
-		cmd = getchar_nowait();
+		/* Time to update cycles ? */
+		if (cycles_elapsed_ms(t, 500)) {
+			/* Update time ref */
+			t = cycles_now();
 
-		if (cmd >= 0) {
-			if (cmd > 32 && cmd < 127)
-				putchar(cmd);
-			putchar('\r');
-			putchar('\n');
-
-			switch (cmd)
-			{
-			case 'm': {
-				printf("Running debug memory test\n");
-				mt_run(0x20, true);
-				break;
-			}
-
-			case 'M': {
-				printf("Running full memory test\n");
-				set_status(0);
-				set_status( mt_run(0x200000, false) ? 1 : 2 );
-				break;
-			}
-
-
-			case 'q': {
-				const uint8_t tx_buf[1] = { 0x35 };
-				spi_xfer(tx_buf, 1, 0, NULL, 0);
-				break;
-			}
-
-			case 'i': {
-				const uint8_t tx_buf[1] = { 0x9f };
-				uint8_t rx_buf[8];
-				spi_xfer(tx_buf, 1, 3, rx_buf, 8);
-				printf("ID: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-					rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3],
-					rx_buf[4], rx_buf[5], rx_buf[6], rx_buf[7]
-				);
-				break;
-			}
-
-			case 'w': {
-				const uint8_t tx_buf[] = { 0x02, 0x00, 0x00, 0x00, 0xba, 0xad, 0xb0, 0x0b };
-				spi_xfer(tx_buf, 8, 0, NULL, 0);
-				break;
-			}
-			case 'W': {
-				const uint8_t tx_buf[] = { 0x02, 0x00, 0x00, 0x00, 0xca, 0xfe, 0xba, 0xbe };
-				spi_xfer(tx_buf, 8, 0, NULL, 0);
-				break;
-			}
-			case 'r': {
-				const uint8_t tx_buf[] = { 0x0b, 0x00, 0x00, 0x00 };
-				uint8_t rx_buf[4];
-				spi_xfer(tx_buf, 4, 1, rx_buf, 4);
-				printf("%02x %02x %02x %02x\n",
-					rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]
-				);
-				break;
-			}
-
-			case 'l': {
-				lcd_init();
-				lcd_color_screen();
-				break;
-			}
-
-			default:
-				break;
-			}
+			/* Run cycles */
+			cycle_lcd_rgb();
+			cycle_pmod();
 		}
+
+		/* Debug interactive console */
+#if 0
+		int cmd = getchar_nowait();
+
+		switch (cmd) {
+		case -1:
+			break;
+
+		case 'e':
+			printf("%08x\n", h_cmd_ping(SOC_CMD_PING_PARAM));
+			break;
+
+		case '0':
+			printf("%08x\n", h_cmd_rgb_state_set(0));
+			break;
+
+		case '1':
+			printf("%08x\n", h_cmd_rgb_state_set(1));
+			break;
+
+		case '2':
+			printf("%08x\n", h_cmd_rgb_state_set(2));
+			break;
+
+		case '3':
+			printf("%08x\n", h_cmd_rgb_state_set(3));
+			break;
+
+		case 'i':
+			printf("%08x\n", h_cmd_irqn_set(0));
+			break;
+
+		case 'I':
+			printf("%08x\n", h_cmd_irqn_set(1));
+			break;
+
+		case 'k':
+			printf("%08x\n", h_cmd_lcd_rgb_cycle_set(0));
+			break;
+
+		case 'K':
+			printf("%08x\n", h_cmd_lcd_rgb_cycle_set(1));
+			break;
+
+		case 'p':
+			printf("%08x\n", h_cmd_pmod_cycle_set(0));
+			break;
+
+		case 'P':
+			printf("%08x\n", h_cmd_pmod_cycle_set(1));
+			break;
+
+		case 't':
+			printf("%08x\n", h_cmd_lcd_passthrough_set(0));
+			break;
+
+		case 'T':
+			printf("%08x\n", h_cmd_lcd_passthrough_set(1));
+			break;
+
+		case 'r':
+			printf("%08x\n", h_cmd_psram_test(0));
+			break;
+
+		case 'u':
+			printf("%08x\n", h_cmd_uart_loopback_test(0));
+			break;
+
+		case 'o':
+			printf("%08x\n", h_cmd_pmod_open_test(0));
+			break;
+
+		case 's':
+			printf("%08x\n", h_cmd_pmod_plug_test(0));
+			break;
+
+		case 'l':
+			printf("%08x\n", h_cmd_lcd_init_test(0));
+			break;
+		}
+#endif
 	}
 }

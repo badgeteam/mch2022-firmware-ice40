@@ -10,8 +10,7 @@
 `default_nettype none
 
 module soc_bram #(
-	parameter integer SIZE = 256,
-	parameter integer AW = $clog2(SIZE),
+	parameter integer AW = 8,
 	parameter INIT_FILE = ""
 )(
 	input  wire [AW-1:0] addr,
@@ -23,7 +22,7 @@ module soc_bram #(
 );
 
 	(* no_rw_check *)
-	reg [31:0] mem [0:SIZE-1];
+	reg [31:0] mem [0:(1<<AW)-1];
 
 	initial
 		if (INIT_FILE != "")

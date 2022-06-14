@@ -1,0 +1,11 @@
+This repository contains a variety of cores and example projects.
+In general here I target the CERN-OHL-P-2.0 for the HDL and MIT for
+the software. The full text for those license should be under the
+`doc/` subdirectory.
+
+Some code imported from elsewhere might be under different licenses.
+This repository also contains submodules that are licensed under their
+own licenses.
+
+Each file/project/core has the applicable license in its header, make
+sure to check them.

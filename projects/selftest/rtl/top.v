@@ -49,7 +49,7 @@ module top (
 	input  wire       clk_in
 );
 
-	localparam integer WN  = 6;
+	localparam integer WN = 7;
 	genvar i;
 
 
@@ -66,6 +66,9 @@ module top (
 	wire [WN-1:0] wb_ack;
 
 	wire [(32*WN)-1:0] wb_rdata_flat;
+
+	// Misc
+	wire [11:0] gpio_in;
 
 	// Memory interface
 	wire [31:0] mi_addr;
@@ -90,11 +93,41 @@ module top (
 	wire        qpi_phy_cs_o;
 
 	// LCD PHY
+	wire        lcd_phy_ena;
 	wire  [7:0] lcd_phy_data;
 	wire        lcd_phy_rs;
 	wire        lcd_phy_valid;
 	wire        lcd_phy_ready;
 	wire        lcd_phy_fmark_stb;
+
+	// SPI interface
+		// Raw core IF
+	wire [7:0] usr_mosi_data;
+	wire       usr_mosi_stb;
+
+	wire [7:0] usr_miso_data;
+	wire       usr_miso_ack;
+
+	wire       csn_state;
+	wire       csn_rise;
+	wire       csn_fall;
+
+		// Protocol IF
+	wire [7:0] pw_wdata;
+	wire       pw_wcmd;
+	wire       pw_wstb;
+
+	wire       pw_end;
+
+	wire       pw_req;
+	wire       pw_gnt;
+	wire [7:0] pw_rdata;
+	wire       pw_rstb;
+
+	wire       pwx_req[0:1];
+	wire       pwx_gnt[0:1];
+	wire [7:0] pwx_rdata[0:1];
+	wire       pwx_rstb[0:1];
 
 	// Clock / Reset
 	wire        clk_1x;
@@ -128,20 +161,22 @@ module top (
 		assign wb_rdata_flat[i*32+:32] = wb_rdata[i];
 
 
-	// GPIO [0]
+	// Misc [0]
 	// ----
 
-	gpio_wb #(
+	misc_wb #(
 		.N(12)
-	) gpio_I (
-		.gpio({
+	) misc_I (
+		.gpio_pads({
 			irq_n,		// [11]
 			lcd_cs_n,	// [10]
 			lcd_mode,	// [ 9]
 			lcd_rst_n,	// [ 8]
 			pmod		// [ 7:0]
 		}),
-		.wb_addr  (wb_addr[1:0]),
+		.gpio_in  (gpio_in),
+		.lcd_fmark(lcd_phy_fmark_stb),
+		.wb_addr  (wb_addr[2:0]),
 		.wb_rdata (wb_rdata[0]),
 		.wb_we    (wb_we),
 		.wb_wdata (wb_wdata),
@@ -296,6 +331,10 @@ module top (
 		.wb_we         (wb_we),
 		.wb_cyc        (wb_cyc[5]),
 		.wb_ack        (wb_ack[5]),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
 		.clk           (clk_1x),
 		.rst           (rst)
 	);
@@ -308,6 +347,7 @@ module top (
 		.lcd_rs        (lcd_rs),
 		.lcd_wr_n      (lcd_wr_n),
 		.lcd_fmark     (lcd_fmark),
+		.phy_ena       (lcd_phy_ena),
 		.phy_data      (lcd_phy_data),
 		.phy_rs        (lcd_phy_rs),
 		.phy_valid     (lcd_phy_valid),
@@ -317,15 +357,99 @@ module top (
 		.rst           (rst)
 	);
 
+	assign lcd_phy_ena = gpio_in[9];
 
-	// SPI Loopback
+
+	// SPI Messages [6]
 	// ------------
 
-	spi_loopback spi_lb_I (
-		.spi_mosi (spi_mosi),
-		.spi_miso (spi_miso),
-		.spi_clk  (spi_clk),
-		.spi_cs_n (spi_cs_n),
+	spi_msg_wb spi_msg_I (
+		.wb_wdata      (wb_wdata),
+		.wb_rdata      (wb_rdata[6]),
+		.wb_addr       (wb_addr[1:0]),
+		.wb_we         (wb_we),
+		.wb_cyc        (wb_cyc[6]),
+		.wb_ack        (wb_ack[6]),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
+		.pw_req        (pwx_req[1]),
+		.pw_gnt        (pwx_gnt[1]),
+		.pw_rdata      (pwx_rdata[1]),
+		.pw_rstb       (pwx_rstb[1]),
+		.clk           (clk_1x),
+		.rst           (rst)
+	);
+
+
+	// SPI interface
+	// -------------
+
+	// Device Core
+	spi_dev_core core_I (
+		.spi_miso      (spi_miso),
+		.spi_mosi      (spi_mosi),
+		.spi_clk       (spi_clk),
+		.spi_cs_n      (spi_cs_n),
+		.usr_mosi_data (usr_mosi_data),
+		.usr_mosi_stb  (usr_mosi_stb),
+		.usr_miso_data (usr_miso_data),
+		.usr_miso_ack  (usr_miso_ack),
+		.csn_state     (csn_state),
+		.csn_rise      (csn_rise),
+		.csn_fall      (csn_fall),
+		.clk           (clk_1x),
+		.rst           (rst)
+	);
+
+	// Protocol wrapper
+	spi_dev_proto proto_I (
+		.usr_mosi_data (usr_mosi_data),
+		.usr_mosi_stb  (usr_mosi_stb),
+		.usr_miso_data (usr_miso_data),
+		.usr_miso_ack  (usr_miso_ack),
+		.csn_state     (csn_state),
+		.csn_rise      (csn_rise),
+		.csn_fall      (csn_fall),
+		.pw_wdata      (pw_wdata),
+		.pw_wcmd       (pw_wcmd),
+		.pw_wstb       (pw_wstb),
+		.pw_end        (pw_end),
+		.pw_req        (pw_req),
+		.pw_gnt        (pw_gnt),
+		.pw_rdata      (pw_rdata),
+		.pw_rstb       (pw_rstb),
+		.clk           (clk_1x),
+		.rst           (rst)
+	);
+
+	// Response arbiter
+	spi_dev_arb #(
+		.N(2)
+	) arb_I (
+		.us_req   (pw_req),
+		.us_gnt   (pw_gnt),
+		.us_rdata (pw_rdata),
+		.us_rstb  (pw_rstb),
+		.ds_req   ({pwx_req[1],   pwx_req[0]}),
+		.ds_gnt   ({pwx_gnt[1],   pwx_gnt[0]}),
+		.ds_rdata ({pwx_rdata[1], pwx_rdata[0]}),
+		.ds_rstb  ({pwx_rstb[1],  pwx_rstb[0]}),
+		.clk      (clk_1x),
+		.rst      (rst)
+	);
+
+	// SPI loopback
+	spi_loopback loopback_I (
+		.pw_wdata (pw_wdata),
+		.pw_wcmd  (pw_wcmd),
+		.pw_wstb  (pw_wstb),
+		.pw_end   (pw_end),
+		.pw_req   (pwx_req[0]),
+		.pw_gnt   (pwx_gnt[0]),
+		.pw_rdata (pwx_rdata[0]),
+		.pw_rstb  (pwx_rstb[0]),
 		.clk      (clk_1x),
 		.rst      (rst)
 	);

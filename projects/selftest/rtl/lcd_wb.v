@@ -9,7 +9,9 @@
 
 `default_nettype none
 
-module lcd_wb (
+module lcd_wb #(
+	parameter [7:0] CMD_BYTE = 8'hf2
+)(
 	// LCD PHY
 	output wire  [7:0] phy_data,
 	output wire        phy_rs,
@@ -26,6 +28,13 @@ module lcd_wb (
 	input  wire        wb_cyc,
 	output reg         wb_ack,
 
+	// SPI protocol wrapper interface
+	input  wire  [7:0] pw_wdata,
+	input  wire        pw_wcmd,
+	input  wire        pw_wstb,
+
+	input  wire        pw_end,
+
 	// Clock / Reset
 	input  wire clk,
 	input  wire rst
@@ -37,6 +46,7 @@ module lcd_wb (
 	// Bus
 	wire       bus_clr;
 	reg        bus_we_csr;
+	reg        bus_we_mux;
 	reg        bus_we_mem;
 
 	// RAM
@@ -66,7 +76,28 @@ module lcd_wb (
 		ST_LEN  = 2'b00,
 		ST_CMD  = 2'b10,
 		ST_DATA = 2'b11;
-	
+
+	// SPI access
+	reg        spi_active;
+	reg  [1:0] spi_state;
+	reg  [1:0] spi_state_nxt;
+
+	reg  [8:0] spi_data_len;
+	reg        spi_data_inf;
+	wire       spi_data_last;
+
+	reg  [7:0] spi_lcd_data;
+	reg        spi_lcd_rs;
+	reg        spi_lcd_valid;
+
+	// PHY muxing
+	reg        mux_sel;
+	reg        mux_req;
+
+	wire [7:0] pmux_data[0:1];
+	wire       pmux_rs[0:1];
+	wire       pmux_valid[0:1];
+
 
 	// Bus interface
 	// -------------
@@ -83,15 +114,17 @@ module lcd_wb (
 		if (bus_clr)
 			wb_rdata <= 32'h00000000;
 		else
-			wb_rdata <= { cp_active_0, 31'h00000000 };
+			wb_rdata <= wb_addr[0] ? { 30'h00000000, mux_sel, mux_req } : { cp_active_0, 31'h00000000 };
 
 	// Write strobes
 	always @(posedge clk)
 		if (bus_clr) begin
 			bus_we_csr <= 1'b0;
+			bus_we_mux <= 1'b0;
 			bus_we_mem <= 1'b0;
 		end else begin
-			bus_we_csr <= wb_we & ~wb_addr[9];
+			bus_we_csr <= wb_we & ~wb_addr[9] & ~wb_addr[0];
+			bus_we_mux <= wb_we & ~wb_addr[9] &  wb_addr[0];
 			bus_we_mem <= wb_we &  wb_addr[9];
 		end
 
@@ -180,8 +213,97 @@ module lcd_wb (
 	end
 
 	// Stage 1: PHY control
-	assign phy_data  = cp_data_1;
-	assign phy_rs    = (cp_state_1 == ST_DATA);
-	assign phy_valid = (cp_state_1 == ST_CMD) || (cp_state_1 == ST_DATA);
+	assign pmux_data[0]  = cp_data_1;
+	assign pmux_rs[0]    = (cp_state_1 == ST_DATA);
+	assign pmux_valid[0] = (cp_state_1 == ST_CMD) || (cp_state_1 == ST_DATA);
+
+
+	// SPI pass-through
+	// ----------------
+
+	// SPI Command tracking
+	always @(posedge clk)
+		if (rst)
+			spi_active <= 1'b0;
+		else
+			spi_active <= (spi_active | (pw_wstb & pw_wcmd & (pw_wdata == CMD_BYTE))) & ~pw_end;
+
+	// State tracking
+	always @(posedge clk or posedge rst)
+		if (rst)
+			spi_state <= ST_LEN;
+		else if (pw_wstb)
+			spi_state <= spi_state_nxt;
+
+	always @(*)
+	begin
+		// Default sequence
+		case (spi_state)
+			ST_LEN:  spi_state_nxt = ST_CMD;
+			ST_CMD:  spi_state_nxt = spi_data_last ? ST_LEN : ST_DATA;
+			ST_DATA: spi_state_nxt = spi_data_last ? ST_LEN : ST_DATA;
+			default: spi_state_nxt = spi_state;
+		endcase
+
+		// Reset
+		if (pw_wcmd)
+			spi_state_nxt = ST_LEN;
+	end
+
+	// Data length tracking
+	always @(posedge clk or posedge rst)
+	begin
+		if (rst) begin
+			spi_data_len <= 0;
+			spi_data_inf <= 1'b0;
+		end else if (pw_wstb) begin
+			spi_data_len <= ((spi_state == ST_LEN) ? { 1'b0, pw_wdata } : spi_data_len) - 1;
+			spi_data_inf <=  (spi_state == ST_LEN) ? &pw_wdata : spi_data_inf;
+		end
+	end
+
+	assign spi_data_last = spi_data_len[8] & ~spi_data_inf;
+
+	// Register data
+	always @(posedge clk)
+		if (pw_wstb) begin
+			spi_lcd_data <= pw_wdata;
+			spi_lcd_rs   <= spi_state == ST_DATA;
+		end
+
+	always @(posedge clk)
+		spi_lcd_valid <=
+			(spi_lcd_valid & ~phy_ready) |
+			(pw_wstb & spi_active & (
+				(spi_state == ST_CMD) |
+				(spi_state == ST_DATA)
+			));
+
+	// PHY control
+	assign pmux_data[1]  = spi_lcd_data;
+	assign pmux_rs[1]    = spi_lcd_rs;
+	assign pmux_valid[1] = spi_lcd_valid;
+
+
+	// PHY Muxing
+	// ----------
+
+	// Control register
+	always @(posedge clk)
+		if (rst)
+			mux_req <= 1'b0;
+		else
+			mux_req <= (bus_we_mux & wb_wdata[0]) | (~bus_we_mux & mux_req);
+
+	always @(posedge clk)
+		if (rst)
+			mux_sel <= 1'b0;
+		else
+			mux_sel <= (spi_active | cp_active_0 | phy_valid) ? mux_sel : mux_req;
+
+	// Actual muxing
+	assign phy_data  = pmux_data[mux_sel];
+	assign phy_rs    = pmux_rs[mux_sel];
+	assign phy_valid = pmux_valid[mux_sel];
 
 endmodule // lcd_wb

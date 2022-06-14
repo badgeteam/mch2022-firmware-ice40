@@ -56,6 +56,12 @@ module spi_dev_ezwb #(
 
 	wire       pw_end;
 
+	wire       pw_req;
+	wire       pw_gnt;
+
+	wire [7:0] pw_rdata;
+	wire       pw_rstb;
+
 
 	// Cores
 	// -----
@@ -69,7 +75,7 @@ module spi_dev_ezwb #(
 		.usr_mosi_data (usr_mosi_data),
 		.usr_mosi_stb  (usr_mosi_stb),
 		.usr_miso_data (usr_miso_data),
-		.usr_miso_ack  (usr_miso_ack ),
+		.usr_miso_ack  (usr_miso_ack),
 		.csn_state     (csn_state),
 		.csn_rise      (csn_rise),
 		.csn_fall      (csn_fall),
@@ -90,6 +96,12 @@ module spi_dev_ezwb #(
 		.pw_wcmd       (pw_wcmd),
 		.pw_wstb       (pw_wstb),
 		.pw_end        (pw_end),
+		.pw_req        (pw_req),
+		.pw_gnt        (pw_gnt),
+		.pw_rdata      (pw_rdata),
+		.pw_rstb       (pw_rstb),
+		.pw_irq        (4'h0),
+		.irq           (),
 		.clk           (clk),
 		.rst           (rst)
 	);
@@ -102,6 +114,10 @@ module spi_dev_ezwb #(
 		.pw_wcmd  (pw_wcmd),
 		.pw_wstb  (pw_wstb),
 		.pw_end   (pw_end),
+		.pw_req   (pw_req),
+		.pw_gnt   (pw_gnt),
+		.pw_rdata (pw_rdata),
+		.pw_rstb  (pw_rstb),
 		.wb_wdata (wb_wdata),
 		.wb_rdata (wb_rdata),
 		.wb_addr  (wb_addr),

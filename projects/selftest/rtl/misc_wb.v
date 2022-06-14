@@ -1,5 +1,5 @@
 /*
- * gpio_wb.v
+ * misc_wb.v
  *
  * vim: ts=4 sw=4
  *
@@ -9,16 +9,20 @@
 
 `default_nettype none
 
-module gpio_wb #(
+module misc_wb #(
 	parameter integer N = 12
 )(
-	// GPIO pads
-	inout  wire [N-1:0] gpio,
+	// GPIO
+	inout  wire [N-1:0] gpio_pads,
+	output wire [N-1:0] gpio_in,
+
+	// LCD fmark
+	input  wire        lcd_fmark,
 
 	// Wishbone interface
 	input  wire [31:0] wb_wdata,
 	output reg  [31:0] wb_rdata,
-	input  wire [ 1:0] wb_addr,
+	input  wire [ 2:0] wb_addr,
 	input  wire        wb_we,
 	input  wire        wb_cyc,
 	output reg         wb_ack,
@@ -41,6 +45,10 @@ module gpio_wb #(
 	reg  [N-1:0] gpio_o;
 	wire [N-1:0] gpio_i;
 
+	// Counters
+	reg   [31:0] cnt_cycle;
+	reg   [15:0] cnt_frame;
+
 
 	// Bus interface
 	// -------------
@@ -57,8 +65,8 @@ module gpio_wb #(
 			bus_we_gpio_oe <= 1'b0;
 			bus_we_gpio_o  <= 1'b0;
 		end else begin
-			bus_we_gpio_oe <= wb_we & (wb_addr[1:0] == 2'b00);
-			bus_we_gpio_o  <= wb_we & (wb_addr[1:0] == 2'b01);
+			bus_we_gpio_oe <= wb_we & (wb_addr[2:0] == 3'b000);
+			bus_we_gpio_o  <= wb_we & (wb_addr[2:0] == 3'b001);
 		end
 
 	// Registers
@@ -79,12 +87,32 @@ module gpio_wb #(
 		if (bus_clr)
 			wb_rdata <= 0;
 		else
-			casez (wb_addr[1:0])
-				2'b00:   wb_rdata <= { {(32-N){1'b0}}, gpio_oe };
-				2'b01:   wb_rdata <= { {(32-N){1'b0}}, gpio_o  };
-				2'b10:   wb_rdata <= { {(32-N){1'b0}}, gpio_i  };
+			casez (wb_addr[2:0])
+				3'b000:  wb_rdata <= { {(32-N){1'b0}}, gpio_oe };
+				3'b001:  wb_rdata <= { {(32-N){1'b0}}, gpio_o  };
+				3'b010:  wb_rdata <= { {(32-N){1'b0}}, gpio_i  };
+				3'b1z0:  wb_rdata <= cnt_cycle;
+				3'b1z1:  wb_rdata <= { 16'h0000, cnt_frame };
 				default: wb_rdata <= 32'hxxxxxxxx;
 			endcase
+
+
+	// Counters
+	// --------
+
+	// Cycle counter
+	always @(posedge clk)
+		if (rst)
+			cnt_cycle <= 0;
+		else
+			cnt_cycle <= cnt_cycle + 1;
+
+	// Frame mark counter
+	always @(posedge clk)
+		if (rst)
+			cnt_frame <= 0;
+		else
+			cnt_frame <= cnt_frame + lcd_fmark;
 
 
 	// IOBs
@@ -92,10 +120,10 @@ module gpio_wb #(
 
 	SB_IO #(
 		.PIN_TYPE(6'b1101_00),   // Reg input, Reg+RegOE output
-		.PULLUP(1'b0),
+		.PULLUP(1'b1),
 		.IO_STANDARD("SB_LVCMOS")
 	) iob_I[N-1:0] (
-		.PACKAGE_PIN   (gpio),
+		.PACKAGE_PIN   (gpio_pads),
 		.INPUT_CLK     (clk),
 		.OUTPUT_CLK    (clk),
 		.D_IN_0        (gpio_i),
@@ -103,4 +131,6 @@ module gpio_wb #(
 		.OUTPUT_ENABLE (gpio_oe)
 	);
 
-endmodule // gpio_wb
+	assign gpio_in = gpio_i;
+
+endmodule // misc_wb

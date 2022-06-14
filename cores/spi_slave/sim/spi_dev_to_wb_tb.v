@@ -128,20 +128,20 @@ module spi_dev_to_wb_tb;
 		// Issue command
 		pw_write(1, 8'hf0);
 
-		pw_write(1, 8'h82); // Mode W, No-increment, Device 2
-		pw_write(1, 8'h12);
-		pw_write(1, 8'h34);
-		pw_write(1, 8'h56);
+		pw_write(0, 8'h82); // Mode W, No-increment, Device 2
+		pw_write(0, 8'h12);
+		pw_write(0, 8'h34);
+		pw_write(0, 8'h56);
 
-		pw_write(1, 8'hb0);
-		pw_write(1, 8'h0b);
-		pw_write(1, 8'h1e);
-		pw_write(1, 8'h50);
+		pw_write(0, 8'hb0);
+		pw_write(0, 8'h0b);
+		pw_write(0, 8'h1e);
+		pw_write(0, 8'h50);
 
-		pw_write(1, 8'hca);
-		pw_write(1, 8'hfe);
-		pw_write(1, 8'hba);
-		pw_write(1, 8'hbe);
+		pw_write(0, 8'hca);
+		pw_write(0, 8'hfe);
+		pw_write(0, 8'hba);
+		pw_write(0, 8'hbe);
 
 		@(posedge clk);
 		pw_end <= 1'b1;
@@ -151,25 +151,35 @@ module spi_dev_to_wb_tb;
 		// Issue command
 		pw_write(1, 8'hf0);
 
-		pw_write(1, 8'hc2); // Mode W, Re-address, Device 2
-		pw_write(1, 8'h22);
-		pw_write(1, 8'h22);
-		pw_write(1, 8'h22);
+		pw_write(0, 8'hc2); // Mode W, Re-address, Device 2
+		pw_write(0, 8'h22);
+		pw_write(0, 8'h22);
+		pw_write(0, 8'h22);
 
-		pw_write(1, 8'hb0);
-		pw_write(1, 8'h0b);
-		pw_write(1, 8'h1e);
-		pw_write(1, 8'h50);
+		pw_write(0, 8'hb0);
+		pw_write(0, 8'h0b);
+		pw_write(0, 8'h1e);
+		pw_write(0, 8'h50);
 
-		pw_write(1, 8'hc0); // Mode W, Re-address, Device 0
-		pw_write(1, 8'h11);
-		pw_write(1, 8'h11);
-		pw_write(1, 8'h11);
+		pw_write(0, 8'hc0); // Mode W, Re-address, Device 0
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
 
-		pw_write(1, 8'hca);
-		pw_write(1, 8'hfe);
-		pw_write(1, 8'hba);
-		pw_write(1, 8'hbe);
+		pw_write(0, 8'hca);
+		pw_write(0, 8'hfe);
+		pw_write(0, 8'hba);
+		pw_write(0, 8'hbe);
+
+		pw_write(0, 8'h40); // Mode R, Re-address, Device 0
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
+		pw_write(0, 8'h11);
+
+		pw_write(0, 8'hca);
+		pw_write(0, 8'hfe);
+		pw_write(0, 8'hba);
+		pw_write(0, 8'hbe);
 
 		@(posedge clk);
 		pw_end <= 1'b1;
