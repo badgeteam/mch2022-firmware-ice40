@@ -21,6 +21,9 @@ module top (
 	input  wire       spi_clk,
 	input  wire       spi_cs_n,
 
+	// IRQ
+	output wire       irq_n,
+
 	// RGB Leds
 	output wire [2:0] rgb,
 
@@ -134,6 +137,9 @@ module top (
 	wire [7:0] pw_rdata;
 	wire       pw_rstb;
 
+	wire [3:0] pw_irq;
+	wire       irq;
+
 	// Device Core
 	spi_dev_core core_I (
 		.spi_miso      (spi_miso),
@@ -168,6 +174,8 @@ module top (
 		.pw_gnt        (pw_gnt),
 		.pw_rdata      (pw_rdata),
 		.pw_rstb       (pw_rstb),
+		.pw_irq        (pw_irq),
+		.irq           (irq),
 		.clk           (clk),
 		.rst           (rst)
 	);
@@ -212,6 +220,11 @@ module top (
 
 	for (i=0; i<WN; i=i+1)
 		assign wb_rdata_flat[i*32+:32] = wb_rdata[i];
+
+	assign pw_irq = 4'b0000;
+
+	assign irq_n = irq ? 1'b0 : 1'bz;
+
 `endif
 
 

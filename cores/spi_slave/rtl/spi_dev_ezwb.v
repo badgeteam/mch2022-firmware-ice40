@@ -100,6 +100,8 @@ module spi_dev_ezwb #(
 		.pw_gnt        (pw_gnt),
 		.pw_rdata      (pw_rdata),
 		.pw_rstb       (pw_rstb),
+		.pw_irq        (4'h0),
+		.irq           (),
 		.clk           (clk),
 		.rst           (rst)
 	);
