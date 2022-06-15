@@ -446,7 +446,7 @@ module top (
 		.spi_clk  (spi_clk),
 		.spi_cs_n (spi_cs_n),
 		.irq_n    (irq_n),
-		.wb_addr  (wb_addr[9:0]),
+		.wb_addr  (wb_addr[2:0]),
 		.wb_rdata (wb_rdata[4]),
 		.wb_wdata (wb_wdata),
 		.wb_we    (wb_we),

@@ -57,6 +57,7 @@ _start:
 	.equ	LNK_FID,  4
 	.equ	LNK_OFS,  8
 	.equ	LNK_LEN, 12
+	.equ	LNK_DAT, 16
 
 // Reads a block of memory from a file on ESP32
 //
@@ -82,11 +83,11 @@ lnk_read:
 
 2:
 	// Length (and req start)
-		// block_len = min(0x200, len) 
-	li	t3, 0x200
-//	bge	a1, t3, 1f
-//	mv	t3, a1
-//1:
+		// block_len = min(0x400, len)
+	li	t3, 0x400
+	bge	a1, t3, 1f
+	mv	t3, a1
+1:
 		// len -= block_len
 	sub	a1, a1, t3
 
@@ -101,11 +102,8 @@ lnk_read:
 	bne	t0, t5, 1b
 
 	// Copy data
-	li	t1, 0x800
-	add	t1, t1, t6	// t1 = src
-
 1:
-	lw	t0, 0(t1)
+	lw	t0, LNK_DAT(t6)
 	sb	t0, 0(a0)
 	addi	t1, t1, 4
 	addi	a0, a0, 1
