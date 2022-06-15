@@ -3,8 +3,7 @@
 mkdir -p build
 
 echo "Synthesize design..."
-yosys -q -p "synth_ice40 -top top -json build/mch2022.json -blif build/mch2022.blif -dsp -relut -abc2" mch2022.v
-
+yosys -q -p "synth_ice40 -top top -json build/mch2022.json -blif build/mch2022.blif -dsp -relut -abc2" mch2022.v ../../../cores/spi_slave/rtl/* ../../../cores/no2misc/rtl/ram_sdp.v
 echo "Place and Route..."
 nextpnr-ice40 --freq 24 --up5k --package sg48 --asc build/mch2022.txt --pcf mch2022-proto4.pcf --json build/mch2022.json --ignore-loops --pcf-allow-unconstrained
 

@@ -1,8 +1,6 @@
 
 `default_nettype none
 
-`define cfg_divider       208  // 24 MHz / 115200 = 208.33
-
 `include "common-verilog/uart-fifo.v"
 `include "common-verilog/j1-universal-16kb-quickstore.v"
 
@@ -12,6 +10,13 @@ module top(input clk_in, // 12 MHz
            input  uart_rx,
 
            inout [7:0] pmod,
+
+           // SPI
+           input  spi_mosi,
+           output spi_miso,
+           input  spi_clk,
+           input  spi_cs_n,
+
 
            // LCD
            output reg  [7:0] lcd_d,
@@ -184,7 +189,10 @@ module top(input clk_in, // 12 MHz
   wire uart0_wr = io_wr & io_addr[12];
   wire uart0_rd = io_rd & io_addr[12];
 
-  buart _uart0 (
+  buart #(
+     .FREQ_MHZ(24),
+     .BAUDS(115200)
+  ) _uart0 (
      .clk(clk),
      .resetq(resetq),
      .rx(uart_rx),
@@ -194,7 +202,101 @@ module top(input clk_in, // 12 MHz
      .valid(uart0_valid),
      .busy(uart0_busy),
      .tx_data(io_dout[7:0]),
-     .rx_data(uart0_data));
+     .rx_data(uart0_data)
+  );
+
+  // ######   SPI interface   #################################
+
+  wire [7:0] usr_miso_data, usr_mosi_data;
+  wire usr_mosi_stb, usr_miso_ack;
+  wire csn_state, csn_rise, csn_fall;
+
+  spi_dev_core _communication (
+
+    .clk (clk),
+    .rst (~resetq),
+
+    .usr_mosi_data (usr_mosi_data),
+    .usr_mosi_stb  (usr_mosi_stb),
+    .usr_miso_data (usr_miso_data),
+    .usr_miso_ack  (usr_miso_ack),
+
+    .csn_state (csn_state),
+    .csn_rise  (csn_rise),
+    .csn_fall  (csn_fall),
+
+    // Interface to SPI wires
+
+    .spi_miso (spi_miso),
+    .spi_mosi (spi_mosi),
+    .spi_clk  (spi_clk),
+    .spi_cs_n (spi_cs_n)
+  );
+
+  wire [7:0] pw_wdata;
+  wire pw_wcmd, pw_wstb, pw_end;
+
+  spi_dev_proto _protocol (
+    .clk (clk),
+    .rst (~resetq),
+
+    // Connection to the actual SPI module:
+
+    .usr_mosi_data (usr_mosi_data),
+    .usr_mosi_stb  (usr_mosi_stb),
+    .usr_miso_data (usr_miso_data),
+    .usr_miso_ack  (usr_miso_ack),
+
+    .csn_state (csn_state),
+    .csn_rise  (csn_rise),
+    .csn_fall  (csn_fall),
+
+    // These wires deliver received data:
+
+    .pw_wdata (pw_wdata),
+    .pw_wcmd  (pw_wcmd),
+    .pw_wstb  (pw_wstb),
+    .pw_end   (pw_end)
+  );
+
+  reg  [7:0] command;
+  reg [31:0] incoming_data;
+  reg [31:0] buttonstate;
+
+  always @(posedge clk)
+  begin
+    if (pw_wstb & pw_wcmd)           command       <= pw_wdata;
+    if (pw_wstb)                     incoming_data <= incoming_data << 8 | pw_wdata;
+    if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
+  end
+
+  // wire joystick_down  = buttonstate[16];
+  // wire joystick_up    = buttonstate[17];
+  // wire joystick_left  = buttonstate[18];
+  // wire joystick_right = buttonstate[19];
+  // wire joystick_press = buttonstate[20];
+  // wire home           = buttonstate[21];
+  // wire menu           = buttonstate[22];
+  // wire select         = buttonstate[23];
+  //
+  // wire start          = buttonstate[24];
+  // wire accept         = buttonstate[25];
+  // wire back           = buttonstate[26];
+
+  /*
+Bits are mapped to the following keys:
+ 0 - joystick down
+ 1 - joystick up
+ 2 - joystick left
+ 3 - joystick right
+ 4 - joystick press
+ 5 - home
+ 6 - menu
+ 7 - select
+ 8 - start
+ 9 - accept
+10 - back
+  */
 
   // ######   LEDs   ##########################################
 
@@ -417,6 +519,8 @@ module top(input clk_in, // 12 MHz
       08D0      SDM Green       SDM Green
       08E0      SDM Blue        SDM Blue
 
+      08F0      Buttons
+
       1000  12  UART RX         UART TX
       2000  13  UART Flags
       4000  14  Ticks           Set Ticks
@@ -444,6 +548,7 @@ module top(input clk_in, // 12 MHz
     (io_addr[11] & (io_addr[7:4] == 12) ?  sdm_red                                  : 16'd0) |
     (io_addr[11] & (io_addr[7:4] == 13) ?  sdm_green                                : 16'd0) |
     (io_addr[11] & (io_addr[7:4] == 14) ?  sdm_blue                                 : 16'd0) |
+    (io_addr[11] & (io_addr[7:4] == 15) ?  buttonstate[26:16]                       : 16'd0) |
 
     (io_addr[12] ?                       uart0_data                                 : 16'd0) |
     (io_addr[13] ?                       {random, uart0_valid, !uart0_busy}         : 16'd0) |
