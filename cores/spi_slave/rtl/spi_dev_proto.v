@@ -9,7 +9,9 @@
 
 `default_nettype none
 
-module spi_dev_proto (
+module spi_dev_proto #(
+	parameter integer NO_RESP = 0	// Disable responses support, saves a BRAM
+)(
 	// Interface to raw core
 	input  wire [7:0] usr_mosi_data,
 	input  wire       usr_mosi_stb,
@@ -133,22 +135,23 @@ module spi_dev_proto (
 	// ---------------
 
 	// Data
-	ram_sdp #(
-		.AWIDTH(9),
-		.DWIDTH(8)
-	) resp_buf_I (
-		.wr_addr ({rb_wbuf, rb_waddr}),
-		.wr_data (rb_wdata),
-		.wr_ena  (rb_wena),
-		.rd_addr ({rb_rbuf, rb_raddr}),
-		.rd_data (rb_rdata),
-		.rd_ena  (rb_rena),
-		.clk     (clk)
-	);
+	if (NO_RESP == 0)
+		ram_sdp #(
+			.AWIDTH(9),
+			.DWIDTH(8)
+		) resp_buf_I (
+			.wr_addr ({rb_wbuf, rb_waddr}),
+			.wr_data (rb_wdata),
+			.wr_ena  (rb_wena),
+			.rd_addr ({rb_rbuf, rb_raddr}),
+			.rd_data (rb_rdata),
+			.rd_ena  (rb_rena),
+			.clk     (clk)
+		);
 
 	// Ping-pong logic
 	always @(posedge clk)
-		if (rst) begin
+		if (rst | NO_RESP) begin
 			rf_cnt   <= 2'b00;
 			rf_full  <= 1'b0;
 			rf_valid <= 1'b0;
