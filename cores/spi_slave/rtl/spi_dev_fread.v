@@ -14,8 +14,12 @@
 
 module spi_dev_fread #(
 	parameter INTERFACE = "STREAM",	// "STREAM", "FIFO", "RAM"
+	parameter integer BUFFER_DEPTH = 512, // for "FIFO" and "RAM" modes
 	parameter [7:0] CMD_GET_BYTE = 8'hf8,
-	parameter [7:0] CMD_PUT_BYTE = 8'hf9
+	parameter [7:0] CMD_PUT_BYTE = 8'hf9,
+
+	// auto-set
+	parameter integer BL = $clog2(BUFFER_DEPTH)
 )(
 	// Protocol wrapper interface
 	input  wire  [7:0] pw_wdata,
@@ -48,7 +52,7 @@ module spi_dev_fread #(
 	// "fread" response RAM interface
 	output reg         resp_done,
 	output wire  [7:0] resp_rdata_1,
-	input  wire  [8:0] resp_raddr_0,
+	input  wire [BL:0] resp_raddr_0,
 	input  wire        resp_ren_0,
 
 	// Clock / Reset
@@ -176,7 +180,7 @@ module spi_dev_fread #(
 
 			// Instance
 			fifo_sync_ram #(
-				.DEPTH(512),
+				.DEPTH(BUFFER_DEPTH),
 				.WIDTH(8)
 			) fifo_I (
 				.wr_data  (rf_wrdata),
@@ -204,7 +208,7 @@ module spi_dev_fread #(
 		begin
 
 			// Local signals
-			reg  [8:0] rr_wraddr;
+			reg [BL:0] rr_wraddr;
 			wire [7:0] rr_wrdata;
 			wire       rr_wren;
 
@@ -227,7 +231,7 @@ module spi_dev_fread #(
 
 			// RAM instance
 			ram_sdp #(
-				.AWIDTH(9),
+				.AWIDTH(BL),
 				.DWIDTH(8)
 			) ram_I (
 				.wr_addr (rr_wraddr),

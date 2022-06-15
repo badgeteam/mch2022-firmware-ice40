@@ -45,8 +45,11 @@ fw_boot/boot.hex:
 $(BUILD_TMP)/$(PROJ)-sw.asc: $(BUILD_TMP)/$(PROJ).asc $(BUILD_TMP)/boot.hex fw_boot/boot.hex
 	cat $(BUILD_TMP)/$(PROJ).asc | icebram $(BUILD_TMP)/boot.hex fw_boot/boot.hex > $@
 
-prog-fpga: $(BUILD_TMP)/$(PROJ)-sw.bin
-	uart_fpga.py /dev/ttyACM0 $<
+PROG_DEV ?= /dev/ttyACM0
 
-prog-fpga-pl: $(BUILD_TMP)/$(PROJ)-sw.bin
-	uart_fpga.py /dev/ttyACM0 $< /home/tnt/projects/risc-v/doom_riscv/src/riscv/doom-riscv.bin
+prog-fpga: $(BUILD_TMP)/$(PROJ)-sw.bin
+ifeq ($(PROG_SW),)
+	uart_fpga.py $(PROG_DEV) $<
+else
+	uart_fpga.py $(PROG_DEV) $< 0x355beaa3:$(PROG_SW)
+endif

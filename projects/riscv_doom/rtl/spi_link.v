@@ -23,7 +23,7 @@ module spi_link (
 	output wire        irq_n,
 
 	// Wishbone
-	input  wire  [9:0] wb_addr,
+	input  wire  [2:0] wb_addr,
 	output reg  [31:0] wb_rdata,
 	input  wire [31:0] wb_wdata,
 	input  wire [ 3:0] wb_wmsk,
@@ -78,10 +78,9 @@ module spi_link (
 	reg         frd_req_valid;
 	wire        frd_req_ready;
 
-	wire        frd_rsp_done;
-	wire  [7:0] frd_rsp_rdata_1;
-	wire  [8:0] frd_rsp_raddr_0;
-	wire        frd_rsp_ren_0;
+	wire  [7:0] frd_rsp_data;
+	wire        frd_rsp_valid;
+	wire        frd_rsp_ready;
 
 
 	// Bus interface
@@ -91,6 +90,7 @@ module spi_link (
 	reg         bus_we_fid;
 	reg         bus_we_ofs;
 	reg         bus_we_len;
+	reg         bus_re_dat;
 	wire [31:0] bus_rd_csr;
 
 	// Ack
@@ -100,32 +100,37 @@ module spi_link (
 	// Clear
 	assign bus_clr = ~wb_cyc | wb_ack;
 
-	// Write strobes
+	// Read/Write strobes
 	always @(posedge clk)
 		if (bus_clr) begin
 			bus_we_fid <= 1'b0;
 			bus_we_ofs <= 1'b0;
 			bus_we_len <= 1'b0;
+			bus_re_dat <= 1'b0;
 		end else begin
-			bus_we_fid <= wb_we & ~wb_addr[9] & (wb_addr[1:0] == 2'b01);
-			bus_we_ofs <= wb_we & ~wb_addr[9] & (wb_addr[1:0] == 2'b10);
-			bus_we_len <= wb_we & ~wb_addr[9] & (wb_addr[1:0] == 2'b11);
+			bus_we_fid <=  wb_we & (wb_addr[2:0] == 3'b001);
+			bus_we_ofs <=  wb_we & (wb_addr[2:0] == 3'b010);
+			bus_we_len <=  wb_we & (wb_addr[2:0] == 3'b011);
+			bus_re_dat <= ~wb_we & (wb_addr[2:0] == 3'b100);
 		end
 
 	// Read mux
-	always @(*)
-		if (wb_cyc)
-			wb_rdata = wb_addr[9] ? { 24'h000000, frd_rsp_rdata_1 } : bus_rd_csr;
-		else
+	always @(posedge clk)
+		if (bus_clr)
 			wb_rdata = 32'h00000000;
+		else
+			wb_rdata = wb_addr[2] ? { frd_rsp_valid, 23'h000000, frd_rsp_data } : bus_rd_csr;
 
 	// CSR
 	assign bus_rd_csr = {
-		frd_rsp_done,
+		frd_rsp_valid,
 		frd_req_valid,
 		14'h0000,
 		btn_rpt_state_cur
 	};
+
+	// FIFO read
+	assign frd_rsp_ready = bus_re_dat & wb_rdata[31];
 
 
 	// File reads
@@ -148,10 +153,6 @@ module spi_link (
 
 	always @(posedge clk)
 		frd_req_valid <= (frd_req_valid & ~frd_req_ready) | bus_we_len;
-
-	// Read Response
-	assign frd_rsp_raddr_0 = wb_addr[8:0];
-	assign frd_rsp_ren_0   = 1'b1;
 
 
 	// SPI device
@@ -222,7 +223,8 @@ module spi_link (
 
 	// File Reader
 	spi_dev_fread #(
-		.INTERFACE("RAM")
+		.INTERFACE("FIFO"),
+		.BUFFER_DEPTH(1024)
 	) fread_I (
 		.pw_wdata     (pw_wdata),
 		.pw_wcmd      (pw_wcmd),
@@ -238,10 +240,9 @@ module spi_link (
 		.req_len      (frd_req_len),
 		.req_valid    (frd_req_valid),
 		.req_ready    (frd_req_ready),
-		.resp_done    (frd_rsp_done),
-		.resp_rdata_1 (frd_rsp_rdata_1),
-		.resp_raddr_0 (frd_rsp_raddr_0),
-		.resp_ren_0   (frd_rsp_ren_0),
+		.resp_data    (frd_rsp_data),
+		.resp_valid   (frd_rsp_valid),
+		.resp_ready   (frd_rsp_ready),
 		.clk          (clk),
 		.rst          (rst)
 	);
