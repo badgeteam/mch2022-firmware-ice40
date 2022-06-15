@@ -77,7 +77,8 @@ module top(
   wire [7:0] pw_wdata;
   wire pw_wcmd, pw_wstb, pw_end;
 
-  spi_dev_proto _protocol (
+  spi_dev_proto #( .NO_RESP(1)
+  ) _protocol (
     .clk (clk),
     .rst (~resetq),
 
