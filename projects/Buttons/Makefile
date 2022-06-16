@@ -1,18 +1,18 @@
+# Project config
+PROJ := buttons
 
-all :
-	mkdir -p build-tmp
-	rm -f build-tmp/*
+PROJ_DEPS := spi_slave
+PROJ_RTL_SRCS := $(addprefix rtl/, \
+)
+PROJ_TOP_SRC := rtl/buttons.v
+PROJ_TOP_MOD := top
 
-	echo "Synthesize design..."
-	yosys  -q -p "synth_ice40 -top top -json build-tmp/buttons.json -blif build-tmp/buttons.blif -dsp -relut -abc2" rtl/buttons.v ../../cores/spi_slave/rtl/* ../../cores/no2misc/rtl/ram_sdp.v
+# Target config
+BOARD ?= mch2022-proto4
+DEVICE := up5k
+PACKAGE := sg48
 
-	echo "Place and Route..."
-	nextpnr-ice40 --freq 12 --up5k --package sg48 --asc build-tmp/buttons.txt --pcf rtl/mch2022-proto4.pcf --json build-tmp/buttons.json --ignore-loops --pcf-allow-unconstrained
+PIN_DEF := ../_common/data/$(BOARD).pcf
 
-	echo "Create Bitstream..."
-	icepack build-tmp/buttons.txt buttons.bin
-
-	echo "Finished."
-
-clean :
-	rm -rf build-tmp
+# Include default rules
+include ../../build/project-rules.mk
