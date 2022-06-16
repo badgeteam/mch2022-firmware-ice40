@@ -1,5 +1,7 @@
 CORE := spi_slave
 
+DEPS_spi_slave := no2misc
+
 RTL_SRCS_spi_slave := $(addprefix rtl/, \
 	spi_dev_arb.v \
 	spi_dev_core.v \
