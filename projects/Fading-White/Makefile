@@ -1,18 +1,18 @@
+# Project config
+PROJ := fading-white
 
-all :
-	mkdir -p build-tmp
-	rm -f build-tmp/*
+PROJ_DEPS :=
+PROJ_RTL_SRCS := $(addprefix rtl/, \
+)
+PROJ_TOP_SRC := rtl/fading_white.v
+PROJ_TOP_MOD := top
 
-	echo "Synthesize design..."
-	yosys  -q -p "synth_ice40 -top top -json build-tmp/fading_white.json -blif build-tmp/fading_white.blif -dsp -relut -abc2" rtl/fading_white.v
+# Target config
+BOARD ?= mch2022-proto4
+DEVICE := up5k
+PACKAGE := sg48
 
-	echo "Place and Route..."
-	nextpnr-ice40 --freq 12 --up5k --package sg48 --asc build-tmp/fading_white.txt --pcf rtl/mch2022-proto4.pcf --json build-tmp/fading_white.json --ignore-loops --pcf-allow-unconstrained
+PIN_DEF := ../_common/data/$(BOARD).pcf
 
-	echo "Create Bitstream..."
-	icepack build-tmp/fading_white.txt fading_white.bin
-
-	echo "Finished."
-
-clean :
-	rm -rf build-tmp
+# Include default rules
+include ../../build/project-rules.mk
