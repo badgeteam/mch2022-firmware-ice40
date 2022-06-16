@@ -1,9 +1,6 @@
 
 `default_nettype none
 
-`include "../common-verilog/stack2.v"
-`include "../common-verilog/stack3.v"
-
 module j1(
   input wire clk,
   input wire resetq,

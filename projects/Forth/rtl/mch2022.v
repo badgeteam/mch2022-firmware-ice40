@@ -1,9 +1,6 @@
 
 `default_nettype none
 
-`include "common-verilog/uart-fifo.v"
-`include "common-verilog/j1-universal-16kb-quickstore.v"
-
 module top(input clk_in, // 12 MHz
 
            output uart_tx,
