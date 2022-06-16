@@ -5,9 +5,6 @@
 
 `default_nettype none // Simplifies finding typos
 
-`include "uart-fifo.v"
-`include "ledcommflow.v"
-
 module top(
 
    input clk_in, // 12 MHz
