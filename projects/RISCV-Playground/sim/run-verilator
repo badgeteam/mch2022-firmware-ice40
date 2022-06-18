@@ -1,9 +1,0 @@
-#!/bin/bash
-
-cd ../rtl
-stty -icanon -echo
-../sim/Vriscv_playground
-stty sane
-cd ../sim
-
-

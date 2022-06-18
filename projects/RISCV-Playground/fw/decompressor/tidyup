@@ -1,4 +1,0 @@
-#!/bin/sh
-
-rm -f *.o *.list *.lz4 *.raw *.elf *.hex *.bin binarytoverilog
-

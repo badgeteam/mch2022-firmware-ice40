@@ -18,6 +18,14 @@ module riscv_playground(
 
            inout [7:0] pmod,
 
+           // SPI
+           input  spi_mosi,
+           output spi_miso,
+           input  spi_clk,
+           input  spi_cs_n,
+
+           output irq_n,
+
            // LCD
            output reg  [7:0] lcd_d,
            output reg        lcd_rs,
@@ -34,7 +42,24 @@ module riscv_playground(
    // Clock.
    /***************************************************************************/
 
-   wire clk = clk_in; // Directly use 12 MHz
+   // wire clk = clk_in; // Directly use 12 MHz
+
+   wire clk_30mhz;
+
+   SB_PLL40_PAD #(.FEEDBACK_PATH("SIMPLE"),
+                  .DIVR(4'b0000),         // DIVR =  0
+                  .DIVF(7'b1001111),      // DIVF = 79
+                  .DIVQ(3'b101),          // DIVQ =  5
+                  .FILTER_RANGE(3'b001)   // FILTER_RANGE = 1
+          ) uut (
+                  .RESETB(1'b1),
+                  .BYPASS(1'b0),
+                  .PACKAGEPIN(clk_in),
+                  .PLLOUTCORE(clk_30mhz)
+                );
+
+   reg clk;
+   always @(posedge clk_30mhz) clk <= ~clk; // 15 MHz.
 
    /***************************************************************************/
    // Reset logic.
@@ -161,7 +186,7 @@ module riscv_playground(
    wire serial_rd          /*verilator public_flat*/ = io_rstrb & mem_address[16];
 
    buart #(
-     .FREQ_MHZ(12),
+     .FREQ_MHZ(15),
      .BAUDS(115200)
    ) the_buart (
       .clk(clk),
@@ -175,6 +200,189 @@ module riscv_playground(
       .tx_data(mem_wdata[7:0]),
       .rx_data(serial_data)
    );
+
+   /***************************************************************************/
+   // SPI interface.
+   /***************************************************************************/
+
+   wire [7:0] usr_miso_data, usr_mosi_data;
+   wire usr_mosi_stb, usr_miso_ack;
+   wire csn_state, csn_rise, csn_fall;
+
+   spi_dev_core _communication (
+
+     .clk (clk),
+     .rst (~resetq),
+
+     .usr_mosi_data (usr_mosi_data),
+     .usr_mosi_stb  (usr_mosi_stb),
+     .usr_miso_data (usr_miso_data),
+     .usr_miso_ack  (usr_miso_ack),
+
+     .csn_state (csn_state),
+     .csn_rise  (csn_rise),
+     .csn_fall  (csn_fall),
+
+     // Interface to SPI wires
+
+     .spi_miso (spi_miso),
+     .spi_mosi (spi_mosi),
+     .spi_clk  (spi_clk),
+     .spi_cs_n (spi_cs_n)
+   );
+
+   wire [7:0] pw_wdata;
+   wire pw_wcmd, pw_wstb, pw_end;
+
+   wire [7:0] pw_rdata;
+   wire pw_req, pw_rstb, pw_gnt;
+
+   wire [3:0] pw_irq;
+   wire irq;
+
+   spi_dev_proto _protocol (
+     .clk (clk),
+     .rst (~resetq),
+
+     // Connection to the actual SPI module:
+
+     .usr_mosi_data (usr_mosi_data),
+     .usr_mosi_stb  (usr_mosi_stb),
+     .usr_miso_data (usr_miso_data),
+     .usr_miso_ack  (usr_miso_ack),
+
+     .csn_state (csn_state),
+     .csn_rise  (csn_rise),
+     .csn_fall  (csn_fall),
+
+     // These wires deliver received data:
+
+     .pw_wdata (pw_wdata),
+     .pw_wcmd  (pw_wcmd),
+     .pw_wstb  (pw_wstb),
+     .pw_end   (pw_end),
+
+     // Replies and requests
+
+     .pw_req   (pw_req),
+     .pw_gnt   (pw_gnt),
+     .pw_rdata (pw_rdata),
+     .pw_rstb  (pw_rstb),
+
+     .pw_irq   (pw_irq),
+     .irq      (irq)
+   );
+
+   assign pw_irq[3:1] = 3'b000;
+   assign irq_n = irq ? 1'b0 : 1'bz;
+
+   /***************************************************************************/
+   // File read interface over SPI.
+   /***************************************************************************/
+
+   reg [31:0] fileoffset = 32'hFFFFFFFF; // Start with an invalid address
+   reg request = 0;
+   reg file_rbusy_early = 0;
+   reg file_rbusy = 0;
+
+   always @(posedge clk)
+   begin
+
+     if (request) request <= request & ~file_request_ready;
+     else
+     if (mem_address_is_file & (fileoffset != mem_address[27:9]) & |mem_rstrb)
+     begin
+       fileoffset <= mem_address[27:9];
+       request    <= 1;
+       file_rbusy <= 1;
+       file_rbusy_early <= 1;
+     end
+
+     if (file_rbusy_early) file_rbusy_early <= file_rbusy_early & ~file_read_done;
+
+     if (file_rbusy) file_rbusy <= file_rbusy & ~file_rbusy_early;
+   end
+
+   wire file_request_ready;
+   wire file_read_done;
+   wire [7:0] fread_8bitdata;
+   wire [31:0] file_rdata = {fread_8bitdata, fread_8bitdata, fread_8bitdata, fread_8bitdata};
+
+   spi_dev_fread #(
+      .INTERFACE("RAM")
+   ) _fread (
+      .clk (clk),
+      .rst (~resetq),
+
+      // SPI interface
+      .pw_wdata     (pw_wdata),
+      .pw_wcmd      (pw_wcmd),
+      .pw_wstb      (pw_wstb),
+      .pw_end       (pw_end),
+      .pw_req       (pw_req),
+      .pw_gnt       (pw_gnt),
+      .pw_rdata     (pw_rdata),
+      .pw_rstb      (pw_rstb),
+      .pw_irq       (pw_irq[0]),
+
+      // Read request interface
+      .req_file_id  (32'hDABBAD00),
+      .req_offset   (fileoffset),
+      .req_len      (10'd512),
+
+      .req_valid    (request),
+      .req_ready    (file_request_ready),
+
+      // RAM interface to read file contents
+
+      .resp_done(file_read_done),
+      .resp_raddr_0(mem_address[8:0]),
+      .resp_rdata_1(fread_8bitdata),
+      .resp_ren_0(1'b1)
+   );
+
+   /***************************************************************************/
+   // Receive button state over SPI.
+   /***************************************************************************/
+
+   reg  [7:0] command;
+   reg [31:0] incoming_data;
+   reg [31:0] buttonstate;
+
+   always @(posedge clk)
+   begin
+     if (pw_wstb & pw_wcmd)           command       <= pw_wdata;
+     if (pw_wstb)                     incoming_data <= incoming_data << 8 | pw_wdata;
+     if (pw_end & (command == 8'hF4)) buttonstate   <= incoming_data;
+   end
+
+   // wire joystick_down  = buttonstate[16];
+   // wire joystick_up    = buttonstate[17];
+   // wire joystick_left  = buttonstate[18];
+   // wire joystick_right = buttonstate[19];
+   // wire joystick_press = buttonstate[20];
+   // wire home           = buttonstate[21];
+   // wire menu           = buttonstate[22];
+   // wire select         = buttonstate[23];
+   //
+   // wire start          = buttonstate[24];
+   // wire accept         = buttonstate[25];
+   // wire back           = buttonstate[26];
+
+     /*
+   Bits are mapped to the following keys:
+    0 - joystick down
+    1 - joystick up
+    2 - joystick left
+    3 - joystick right
+    4 - joystick press
+    5 - home
+    6 - menu
+    7 - select
+    8 - start
+    9 - accept
+   10 - back
+     */
 
    /***************************************************************************/
    // LCD, with text mode logic.
@@ -192,8 +400,7 @@ module riscv_playground(
 
    // Framebuffer & font data
 
-   reg [10:0] lcd_addr;
-   reg [7:0] characters [1535:0]; initial $readmemh("textarea.hex", characters); // [1199:0] is sufficient, but RAM blocks come in 512 bytes...
+   reg [7:0] characters [1535:0]; // [1199:0] is sufficient, but RAM blocks come in 512 bytes...
    reg [7:0]       font [1023:0]; initial $readmemh("font-c64-ascii.hex", font);
 
    reg [7:0] read_char;
@@ -350,7 +557,7 @@ module riscv_playground(
       (mem_address[ 4] ?  port_in                                  : 32'd0) |  // R:  GPIO port in   [8]: Random generator
       (mem_address[ 5] ?  port_out                                 : 32'd0) |  // RW: GPIO port out
       (mem_address[ 6] ?  port_dir                                 : 32'd0) |  // RW: GPIO port dir
-      //            7     Unused
+      (mem_address[ 7] ?  buttonstate[26:16]                       : 32'd0) |  // R:  Buttons
 
       (mem_address[ 8] ?  {blue_in, green_in, red_in, LEDs}        : 32'd0) |  // RW: [6:4] LED inputs [2:0] LEDs outputs
       (mem_address[ 9] ?  sdm_red                                  : 32'd0) |  // RW: Sigma-delta modulator brightness for red   channel
@@ -457,10 +664,11 @@ module riscv_playground(
    // Memory map:
 
    wire mem_address_is_ram  = (mem_address[31:28] == 4'h0); // 0x00000000
-   wire mem_address_is_char = (mem_address[31:28] == 4'h1); // 0x00100000
-   wire mem_address_is_font = (mem_address[31:28] == 4'h2); // 0x00200000
-   wire mem_address_is_io   = (mem_address[31:28] == 4'h4); // 0x00400000
-   wire mem_address_is_boot = (mem_address[31:28] == 4'h8); // 0x00800000
+   wire mem_address_is_char = (mem_address[31:28] == 4'h1); // 0x10000000
+   wire mem_address_is_font = (mem_address[31:28] == 4'h2); // 0x20000000
+   wire mem_address_is_io   = (mem_address[31:28] == 4'h4); // 0x40000000
+   wire mem_address_is_boot = (mem_address[31:28] == 4'h8); // 0x80000000
+   wire mem_address_is_file = (mem_address[31:28] == 4'h9); // 0x90000000
 
    // Connect the read registers of memories and IO to the memory bus.
 
@@ -470,7 +678,8 @@ module riscv_playground(
       (mem_address_is_char ? char_rdata             : 32'd0) |
       (mem_address_is_font ? font_rdata             : 32'd0) |
       (mem_address_is_io   ? io_rdata_buffered      : 32'd0) |
-      (mem_address_is_boot ? boot_rdata             : 32'd0) ;
+      (mem_address_is_boot ? boot_rdata             : 32'd0) |
+      (mem_address_is_file ? file_rdata             : 32'd0) ;
 
    // Conveniently decoded read and write wires for IO
 
@@ -481,7 +690,7 @@ module riscv_playground(
 
    // If you have peripherals or memories that might be busy, wire them here.
 
-   wire mem_rbusy = textmode_rbusy;
+   wire mem_rbusy = textmode_rbusy | file_rbusy;
    wire mem_wbusy = 1'b0;
 
    /***************************************************************************/
@@ -499,10 +708,10 @@ module riscv_playground(
    );
 
    /***************************************************************************/
-   // Boot memory, initialised BRAMs. 10 kb
+   // Boot memory, initialised BRAMs. 1 kb
    /***************************************************************************/
 
-   reg [31:0] BOOT[10*256-1:0]; initial $readmemh("bootarea.hex", BOOT);
+   reg [31:0] BOOT[1*256-1:0]; initial $readmemh("bootloader.hex", BOOT);
 
    reg [31:0] boot_rdata;
 

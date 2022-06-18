@@ -17,7 +17,7 @@ Peripherals included for default:
   - Timer tick interrupt
   - LEDs
   - UART terminal, 115200 Baud 8N1
-  - 10 kb initialised RAM
+  - 1 kb initialised RAM for bootloader
   - 128 kb uninitialised RAM
 
 ;------------------------------------------------------------------------------
