@@ -19,7 +19,7 @@ module spi_dev_fread #(
 	parameter [7:0] CMD_PUT_BYTE = 8'hf9,
 
 	// auto-set
-	parameter integer BL = $clog2(BUFFER_DEPTH)
+	parameter integer BL = $clog2(BUFFER_DEPTH) - 1
 )(
 	// Protocol wrapper interface
 	input  wire  [7:0] pw_wdata,
@@ -231,7 +231,7 @@ module spi_dev_fread #(
 
 			// RAM instance
 			ram_sdp #(
-				.AWIDTH(BL),
+				.AWIDTH(BL+1),
 				.DWIDTH(8)
 			) ram_I (
 				.wr_addr (rr_wraddr),
