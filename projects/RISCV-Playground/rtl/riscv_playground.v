@@ -57,7 +57,7 @@ module riscv_playground(
                   .BYPASS(1'b0),
                   .LOCK(pll_locked),
                   .PACKAGEPIN(clk_in),
-                  .PLLOUTCORE(clk) // 15 MHz
+                  .PLLOUTGLOBAL(clk) // 15 MHz
                 );
 
    /***************************************************************************/
