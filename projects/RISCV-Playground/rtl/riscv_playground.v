@@ -44,9 +44,10 @@ module riscv_playground(
 
    // wire clk = clk_in; // Directly use 12 MHz
 
-   wire clk_30mhz;
+   wire clk, pll_locked;
 
    SB_PLL40_PAD #(.FEEDBACK_PATH("SIMPLE"),
+                  .PLLOUT_SELECT("GENCLK_HALF"),
                   .DIVR(4'b0000),         // DIVR =  0
                   .DIVF(7'b1001111),      // DIVF = 79
                   .DIVQ(3'b101),          // DIVQ =  5
@@ -54,25 +55,26 @@ module riscv_playground(
           ) uut (
                   .RESETB(1'b1),
                   .BYPASS(1'b0),
+                  .LOCK(pll_locked),
                   .PACKAGEPIN(clk_in),
-                  .PLLOUTCORE(clk_30mhz)
+                  .PLLOUTCORE(clk) // 15 MHz
                 );
-
-   reg clk;
-   always @(posedge clk_30mhz) clk <= ~clk; // 15 MHz.
 
    /***************************************************************************/
    // Reset logic.
    /***************************************************************************/
 
-   wire reset_button = 1'b1; // No reset button on this board
+   wire reset_button = pll_locked; // No reset button on this board
 
    reg [15:0] reset_cnt = 0;
-   wire resetq = &reset_cnt;
+   wire resetbit = &reset_cnt;
+   reg resetq = 0;
 
    always @(posedge clk) begin
-     if (reset_button) reset_cnt <= reset_cnt + !resetq;
+     if (reset_button) reset_cnt <= reset_cnt + !resetbit;
      else        reset_cnt <= 0;
+
+     resetq <= resetbit;
    end
 
    /***************************************************************************/
@@ -280,9 +282,8 @@ module riscv_playground(
    // File read interface over SPI.
    /***************************************************************************/
 
-   reg [31:0] fileoffset = 32'hFFFFFFFF; // Start with an invalid address
+   reg [31:0] buffercontent = 32'hFFFFFFFF; // Start with an invalid address
    reg request = 0;
-   reg file_rbusy_early = 0;
    reg file_rbusy = 0;
 
    always @(posedge clk)
@@ -290,17 +291,15 @@ module riscv_playground(
 
      if (request) request <= request & ~file_request_ready;
      else
-     if (mem_address_is_file & (fileoffset != mem_address[27:9]) & |mem_rstrb)
+     if (mem_address_is_file & (buffercontent != {4'b0, mem_address[27:9], 9'b0}) & mem_rstrb)
      begin
-       fileoffset <= mem_address[27:9];
+       buffercontent <= {4'b0, mem_address[27:9], 9'b0};
        request    <= 1;
        file_rbusy <= 1;
-       file_rbusy_early <= 1;
+       file_rbusy <= 1;
      end
 
-     if (file_rbusy_early) file_rbusy_early <= file_rbusy_early & ~file_read_done;
-
-     if (file_rbusy) file_rbusy <= file_rbusy & ~file_rbusy_early;
+     if (file_rbusy) file_rbusy <= file_rbusy & ~file_read_done;
    end
 
    wire file_request_ready;
@@ -327,8 +326,8 @@ module riscv_playground(
 
       // Read request interface
       .req_file_id  (32'hDABBAD00),
-      .req_offset   (fileoffset),
-      .req_len      (10'd512),
+      .req_offset   (buffercontent),
+      .req_len      (10'd511), // One less than the actual requested length!
 
       .req_valid    (request),
       .req_ready    (file_request_ready),
