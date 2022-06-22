@@ -313,7 +313,11 @@ module riscv_playground(
       .req_len      (10'd1023), // One less than the actual requested length!
 
       .req_valid    (request),
-      .req_ready    (file_request_ready)
+      .req_ready    (file_request_ready),
+
+      // Stream reply interface
+      .resp_data    (file_data),
+      .resp_valid   (file_data_wstrb)
    );
 
    /***************************************************************************/
@@ -324,7 +328,10 @@ module riscv_playground(
 
    reg [31:0] FILE[1024/4-1:0];
    reg [31:0] file_rdata;
-   reg  [9:0] file_recv_addr;
+   reg [10:0] file_recv_addr;
+
+   wire [7:0] file_data;
+   wire       file_data_wstrb;
 
    always @(posedge clk)
    begin
@@ -339,16 +346,15 @@ module riscv_playground(
      end
      else
      begin
-       if (pw_end &             (command == CMD_PUT_BYTE)) file_rbusy <= 0;
-       if (pw_wstb & ~pw_wcmd & (command == CMD_PUT_BYTE))
+       if (file_data_wstrb)
        begin
-         if (file_recv_addr[1:0] == 0) FILE[file_recv_addr[9:2]][ 7:0 ] <= pw_wdata;
-         if (file_recv_addr[1:0] == 1) FILE[file_recv_addr[9:2]][15:8 ] <= pw_wdata;
-         if (file_recv_addr[1:0] == 2) FILE[file_recv_addr[9:2]][23:16] <= pw_wdata;
-         if (file_recv_addr[1:0] == 3) FILE[file_recv_addr[9:2]][31:24] <= pw_wdata;
-
+         if (file_recv_addr[1:0] == 0) FILE[file_recv_addr[9:2]][ 7:0 ] <= file_data;
+         if (file_recv_addr[1:0] == 1) FILE[file_recv_addr[9:2]][15:8 ] <= file_data;
+         if (file_recv_addr[1:0] == 2) FILE[file_recv_addr[9:2]][23:16] <= file_data;
+         if (file_recv_addr[1:0] == 3) FILE[file_recv_addr[9:2]][31:24] <= file_data;
          file_recv_addr <= file_recv_addr + 1;
        end
+       if (pw_end & (file_recv_addr != 0)) file_rbusy <= 0;
      end
    end
 
