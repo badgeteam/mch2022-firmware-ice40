@@ -65,8 +65,6 @@ Reset:
   li sp, 0x80000000 + 1024           # 8 elements return stack
   li x9, 0x80000000 + 1024 - 8*4     # 8 elements data   stack
 
-
-
 LCD_init:
   li x14, lcd_ctrl
 
@@ -102,31 +100,52 @@ LCD_init:
   li x14, lcd_data
 
 1:lh x15, 0(x13)
-  blt x15, zero, 2f
+  blt x15, zero, FetchFirmware
 
   sw x15, 0(x14)
   addi x13, x13, 2
   j 1b
 
-2:
+
+FetchFirmware:
+
+  li x10, 128*1024
+
+1:addi x10, x10, -4
+
+  li x11, file
+  add x11, x11, x10
+
+  lw x12, 0(x11)
+  sw x12, 0(x10)
+
+  bne x10, zero, 1b
+
+Boot:
+
+  lw x10, 0(zero)
+  beq x10, zero, Echo # No file given? The file interface will delivers zero then which are invalid opcodes.
+  jalr zero, zero, 0  # Enter freshly loaded firmware.
 
 
-  writeln "File contents"
-
-  pushdaconst file
-  pushdaconst 4095
-  call dump
-
-  writeln "UART Echo"
+# Printcontents:
+#
+#
+#   writeln "File contents"
+#
+#   pushdaconst 0
+#   pushdaconst 4095
+#   call dump
+#
+#  writeln "UART Echo"
 
 Echo:
 
   c.jal serial_key
-  addi x8, x8, 1
   c.jal serial_emit
   j Echo
 
-  jalr zero, zero, 0
+
 
 
 
