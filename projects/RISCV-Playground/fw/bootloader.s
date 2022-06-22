@@ -114,7 +114,7 @@ LCD_init:
   writeln "File contents"
 
   pushdaconst file
-  pushdaconst 2047
+  pushdaconst 4095
   call dump
 
   writeln "UART Echo"
@@ -332,10 +332,10 @@ dump: # ( addr len -- )
   write ": "
 
   pushdatos
-  lbu x8, 0(x8)
+  lw x8, 0(x8)
   call hexdot
   writeln ""
-  addi x8, x8, 1
+  addi x8, x8, 4
 
   bgeu x10, x8, 1b
 

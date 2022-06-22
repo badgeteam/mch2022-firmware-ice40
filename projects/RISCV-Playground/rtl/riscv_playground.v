@@ -38,6 +38,9 @@ module riscv_playground(
            inout [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
 );
 
+	parameter [7:0] CMD_GET_BYTE = 8'hf8;
+	parameter [7:0] CMD_PUT_BYTE = 8'hf9;
+
    /***************************************************************************/
    // Clock.
    /***************************************************************************/
@@ -279,36 +282,15 @@ module riscv_playground(
    assign irq_n = irq ? 1'b0 : 1'bz;
 
    /***************************************************************************/
-   // File read interface over SPI.
+   // File request interface over SPI.
    /***************************************************************************/
 
    reg [31:0] buffercontent = 32'hFFFFFFFF; // Start with an invalid address
    reg request = 0;
-   reg file_rbusy = 0;
-
-   always @(posedge clk)
-   begin
-
-     if (request) request <= request & ~file_request_ready;
-     else
-     if (mem_address_is_file & (buffercontent != {4'b0, mem_address[27:9], 9'b0}) & mem_rstrb)
-     begin
-       buffercontent <= {4'b0, mem_address[27:9], 9'b0};
-       request    <= 1;
-       file_rbusy <= 1;
-       file_rbusy <= 1;
-     end
-
-     if (file_rbusy) file_rbusy <= file_rbusy & ~file_read_done;
-   end
-
    wire file_request_ready;
-   wire file_read_done;
-   wire [7:0] fread_8bitdata;
-   wire [31:0] file_rdata = {fread_8bitdata, fread_8bitdata, fread_8bitdata, fread_8bitdata};
 
    spi_dev_fread #(
-      .INTERFACE("RAM")
+      .INTERFACE("STREAM")
    ) _fread (
       .clk (clk),
       .rst (~resetq),
@@ -327,18 +309,49 @@ module riscv_playground(
       // Read request interface
       .req_file_id  (32'hDABBAD00),
       .req_offset   (buffercontent),
-      .req_len      (10'd511), // One less than the actual requested length!
+      .req_len      (10'd1023), // One less than the actual requested length!
 
       .req_valid    (request),
-      .req_ready    (file_request_ready),
-
-      // RAM interface to read file contents
-
-      .resp_done(file_read_done),
-      .resp_raddr_0(mem_address[8:0]),
-      .resp_rdata_1(fread_8bitdata),
-      .resp_ren_0(1'b1)
+      .req_ready    (file_request_ready)
    );
+
+   /***************************************************************************/
+   // Receive file data over SPI.
+   /***************************************************************************/
+
+   reg file_rbusy = 0;
+
+   reg [31:0] FILE[1*256-1:0];
+   reg [31:0] file_rdata;
+   reg  [9:0] file_recv_addr;
+
+   always @(posedge clk)
+   begin
+     if (request) request <= request & ~file_request_ready;
+     else
+     if (mem_address_is_file & (buffercontent != {4'b0, mem_address[27:9], 9'b0}) & mem_rstrb)
+     begin
+       buffercontent <= {4'b0, mem_address[27:9], 9'b0};
+       request    <= 1;
+       file_rbusy <= 1;
+       file_recv_addr <= 0;
+     end
+     else
+     begin
+       if (pw_end &             (command == CMD_PUT_BYTE)) file_rbusy <= 0;
+       if (pw_wstb & ~pw_wcmd & (command == CMD_PUT_BYTE))
+       begin
+         if (file_recv_addr[1:0] == 0) FILE[file_recv_addr[9:2]][ 7:0 ] <= pw_wdata;
+         if (file_recv_addr[1:0] == 1) FILE[file_recv_addr[9:2]][15:8 ] <= pw_wdata;
+         if (file_recv_addr[1:0] == 2) FILE[file_recv_addr[9:2]][23:16] <= pw_wdata;
+         if (file_recv_addr[1:0] == 3) FILE[file_recv_addr[9:2]][31:24] <= pw_wdata;
+
+         file_recv_addr <= file_recv_addr + 1;
+       end
+     end
+   end
+
+   always @(posedge clk) file_rdata <= FILE[mem_address[9:2]];
 
    /***************************************************************************/
    // Receive button state over SPI.
