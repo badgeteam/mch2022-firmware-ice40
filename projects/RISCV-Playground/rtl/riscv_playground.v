@@ -46,6 +46,7 @@ module riscv_playground(
    /***************************************************************************/
 
    // wire clk = clk_in; // Directly use 12 MHz
+   // wire pll_locked = 1;
 
    wire clk, pll_locked;
 
@@ -321,7 +322,7 @@ module riscv_playground(
 
    reg file_rbusy = 0;
 
-   reg [31:0] FILE[1*256-1:0];
+   reg [31:0] FILE[1024/4-1:0];
    reg [31:0] file_rdata;
    reg  [9:0] file_recv_addr;
 
@@ -329,9 +330,9 @@ module riscv_playground(
    begin
      if (request) request <= request & ~file_request_ready;
      else
-     if (mem_address_is_file & (buffercontent != {4'b0, mem_address[27:9], 9'b0}) & mem_rstrb)
+     if (mem_address_is_file & (buffercontent != {4'b0, mem_address[27:10], 10'b0}) & mem_rstrb)
      begin
-       buffercontent <= {4'b0, mem_address[27:9], 9'b0};
+       buffercontent <= {4'b0, mem_address[27:10], 10'b0};
        request    <= 1;
        file_rbusy <= 1;
        file_recv_addr <= 0;
