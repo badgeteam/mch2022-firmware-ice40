@@ -14,8 +14,7 @@ bootloader.bin : memmap bootloader.o
 	$(RISCVGNU)-objcopy bootloader.elf bootloader.bin -O binary
 	fpc -XX -Os binarytoverilog
 	./binarytoverilog bootloader.bin bootloader.hex
-	# cp bootloader.hex ../sim
-	cp bootloader.hex ../rtl
+	cp bootloader.hex ../../rtl
 
 clean:
 	rm -f *.bin
