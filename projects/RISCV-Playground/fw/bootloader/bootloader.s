@@ -15,7 +15,6 @@
 
 .equ characters,    0x10000000
 .equ font,          0x20000000
-
 .equ file,          0x90000000
 
 # -----------------------------------------------------------------------------
@@ -37,23 +36,6 @@
 .equ CYCLES_US,    12
 .equ CYCLES_MS, 12000
 
-.include "datastackandmacros.s"
-
-.macro write Meldung
-  call dotgaensefuesschen
-        .byte 8f - 7f         # Compute length of string.
-7:      .ascii "\Meldung"
-8:  .balign 2, 0      # Realign
-.endm
-
-.macro writeln Meldung
-  call dotgaensefuesschen
-        .byte 8f - 7f         # Compute length of string.
-7:      .ascii "\Meldung\n"
-
-8:  .balign 2, 0      # Realign
-.endm
-
 # -----------------------------------------------------------------------------
 #   Cold start entry here
 # -----------------------------------------------------------------------------
@@ -61,9 +43,8 @@
 .text
 
 Reset:
-  csrrci zero, mstatus, 8 # Clear Machine Interrupt Enable Bit
-  li sp, 0x80000000 + 1024           # 8 elements return stack
-  li x9, 0x80000000 + 1024 - 8*4     # 8 elements data   stack
+  csrrci zero, mstatus, 8   # Clear Machine Interrupt Enable Bit
+  li sp, 0x80000000 + 1024  # Set stack pointer to end of bootloader block
 
 LCD_init:
   li x14, lcd_ctrl
@@ -80,14 +61,14 @@ LCD_init:
   li x15,                              LCD_CS_N
   sw x15, 0(x14)
 
-  pushdaconst 1*CYCLES_MS
+  li x8, 1*CYCLES_MS
   c.jal delay_cycles
 
   li x14, lcd_ctrl
   li x15,                              LCD_CS_N | LCD_RST_N
   sw x15, 0(x14)
 
-  pushdaconst 120*CYCLES_MS
+  li x8, 120*CYCLES_MS
   c.jal delay_cycles
 
   li x14, lcd_ctrl
@@ -127,30 +108,16 @@ Boot:
   beq x10, zero, Echo # No file given? The file interface will delivers zero then which are invalid opcodes.
   jalr zero, zero, 0  # Enter freshly loaded firmware.
 
-
-# Printcontents:
-#
-#
-#   writeln "File contents"
-#
-#   pushdaconst 0
-#   pushdaconst 4095
-#   call dump
-#
-#  writeln "UART Echo"
-
 Echo:
 
   c.jal serial_key
   c.jal serial_emit
   j Echo
 
-
-
-
-
-
+# -----------------------------------------------------------------------------
 LCD_init_data:
+# -----------------------------------------------------------------------------
+
   .hword LCD_CMD|0xCF, /* ILI9341_POWERB    */   0x00, 0xC1, 0x30
   .hword LCD_CMD|0xED, /* ILI9341_POWER_SEQ */   0x64, 0x03, 0x12, 0x81
   .hword LCD_CMD|0xE8, /* ILI9341_DTCA      */   0x85, 0x00, 0x78
@@ -179,11 +146,8 @@ LCD_init_data:
   .hword LCD_CMD|0x35, /* ILI9341_TEON      */   0x00
   .hword 0xFFFF
 
-
-
-
 # -----------------------------------------------------------------------------
-delay_cycles: # ( cycles -- )
+delay_cycles: # r8:cycles
 # -----------------------------------------------------------------------------
   rdcycle x15       # Start
 
@@ -191,176 +155,32 @@ delay_cycles: # ( cycles -- )
   sub x14, x14, x15 # Elapsed = Current - Start
   bltu x14, x8, 1b  # Loop if elapsed < cycles
 
-  drop
   ret
 
 # -----------------------------------------------------------------------------
-serial_emit: # ( c -- ) Emit one character
+serial_emit: # Emit one character from x8
 # -----------------------------------------------------------------------------
-  push x1
+  li x14, uart_flags
 
-1:call serial_qemit
-  popda x15
-  beq x15, zero, 1b
+1:lw x15, 0(x14)
+  andi x15, x15, 0x200 # Check "busy sending" flag
+  bne x15, zero, 1b
 
   li x14, uart_data
   sw x8, 0(x14)
-  drop
-
-  pop x1
   ret
 
 # -----------------------------------------------------------------------------
-serial_key: # ( -- c ) Receive one character
+serial_key: # Receive one character into x8
 # -----------------------------------------------------------------------------
-  push x1
+  li x14, uart_flags
 
-1:call serial_qkey
-  popda x15
+1:lw x15, 0(x14)
+  andi x15, x15, 0x100 # Check "valid data" flag
   beq x15, zero, 1b
 
-  pushdatos
   li x14, uart_data
-  lw x8, 0(x14)
-  andi x8, x8, 0xFF
-
-  pop x1
-  ret
-
-# -----------------------------------------------------------------------------
-serial_qemit:  # ( -- ? ) Ready to send a character ?
-# -----------------------------------------------------------------------------
-  push x1
-
-  pushdatos
-  li x8, uart_flags
-  lw x8, 0(x8)
-  andi x8, x8, 0x200
-
-  sltiu x8, x8, 1 # 0=
-  sub x8, zero, x8
-
-  pop x1
-  ret
-
-# -----------------------------------------------------------------------------
-serial_qkey:  # ( -- ? ) Is there a key press ?
-# -----------------------------------------------------------------------------
-  push x1
-
-  pushdatos
-  li x8, uart_flags
-  lw x8, 0(x8)
-  andi x8, x8, 0x100
-
-  sltiu x8, x8, 1 # 0<>
-  addi x8, x8, -1
-
-  pop x1
-  ret
-
-
-# -----------------------------------------------------------------------------
-dotgaensefuesschen:
-# -----------------------------------------------------------------------------
-  pushda x1
-
-  # Skip the string in return address
-  lbu x15, 0(x1)    # Length of string
-  addi x1, x1, 1   # Skip length byte
-  add x1, x1, x15   # Skip string
-
-  # Make x1 even
-  andi x15, x1, 1
-  add  x1, x1, x15
-
-# -----------------------------------------------------------------------------
-ctype:
-# -----------------------------------------------------------------------------
-  push_x1_x10
-
-  lbu x10, 0(x8)   # Length
-  addi x8, x8, 1   # Skip length byte
-
-  j type_intern
-
-# -----------------------------------------------------------------------------
-type:
-# -----------------------------------------------------------------------------
-  push_x1_x10
-
-  popda x10 # Length
-
-type_intern:
-  beq x10, zero, 2f
-
-1:dup
-  lbu x8, 0(x8)
-  call serial_emit
-
-  addi x8, x8, 1
-  addi x10, x10, -1
-  bne x10, zero, 1b
-
-2:drop
-  pop_x1_x10
-  ret
-
-# -----------------------------------------------------------------------------
-hexdot: # ( u -- ) Print an unsigned number in Base 16, independent of number subsystem.
-# -----------------------------------------------------------------------------
-
-  push_x1_x10_x12
-
-  popda x10   # Value to print
-  li x11, 32  # Number of bits left
-
-1:pushdatos
-  srli x8, x10, 28
-  andi x8, x8, 0xF
-  li x12, 10
-
-  bltu x8, x12, 2f
-    addi x8, x8, 55-48
-2:addi x8, x8, 48
-  call serial_emit
-
-  slli x10, x10, 4
-  addi x11, x11, -4
-  bne x11, zero, 1b
-
-  pop_x1_x10_x12
-
-# -----------------------------------------------------------------------------
-space:
-# -----------------------------------------------------------------------------
-  pushdaconst 32
-  j serial_emit
-
-# -----------------------------------------------------------------------------
-dump: # ( addr len -- )
-# -----------------------------------------------------------------------------
-  push_x1_x10
-  writeln ""
-
-  popda x10        # Length
-  add x10, x10, x8 # Stop address
-
-1:dup
-  call hexdot
-  write ": "
-
-  pushdatos
-  lw x8, 0(x8)
-  call hexdot
-  writeln ""
-  addi x8, x8, 4
-
-  bgeu x10, x8, 1b
-
-  drop
-  pop_x1_x10
+  lbu x8, 0(x14)
   ret
 
 .org 1024, 0
-

@@ -145,7 +145,7 @@ module riscv_playground(
    wire random = ~buffers_out[1];
 
    /***************************************************************************/
-   // Timer with interrupt
+   // Timer with interrupt.
    /***************************************************************************/
 
    reg  interrupt = 0;
@@ -163,14 +163,18 @@ module riscv_playground(
    end
 
    /***************************************************************************/
+   // Example register.
+   /***************************************************************************/
+
+   reg [31:0] example = 0; // You can hook your logic here!
+
+   /***************************************************************************/
    // GPIO.
    /***************************************************************************/
 
-   wire [8:0] port_in;
+   wire [7:0] port_in;
    reg  [7:0] port_out;
    reg  [7:0] port_dir;
-
-   assign port_in[8] = random;
 
    SB_IO #(.PIN_TYPE(6'b1010_00)) ioa0  (.PACKAGE_PIN(pmod[0]),  .D_OUT_0(port_out[0]),  .D_IN_0(port_in[0]),  .OUTPUT_ENABLE(port_dir[0]),  .INPUT_CLK(clk) );
    SB_IO #(.PIN_TYPE(6'b1010_00)) ioa1  (.PACKAGE_PIN(pmod[1]),  .D_OUT_0(port_out[1]),  .D_IN_0(port_in[1]),  .OUTPUT_ENABLE(port_dir[1]),  .INPUT_CLK(clk) );
@@ -573,9 +577,9 @@ module riscv_playground(
 
    wire [31:0] io_rdata =
 
-      (mem_address[ 4] ?  port_in                                  : 32'd0) |  // R:  GPIO port in   [8]: Random generator
-      (mem_address[ 5] ?  port_out                                 : 32'd0) |  // RW: GPIO port out
-      (mem_address[ 6] ?  port_dir                                 : 32'd0) |  // RW: GPIO port dir
+      (mem_address[ 4] ?  example                                  : 32'd0) |  // RW: Example register
+      (mem_address[ 5] ?  {port_dir, port_out, port_in}            : 32'd0) |  // RW: GPIO
+      (mem_address[ 6] ?  random                                   : 32'd0) |  // R:  Random bit
       (mem_address[ 7] ?  buttonstate[26:16]                       : 32'd0) |  // R:  Buttons
 
       (mem_address[ 8] ?  {blue_in, green_in, red_in, LEDs}        : 32'd0) |  // RW: [6:4] LED inputs [2:0] LEDs outputs
@@ -615,9 +619,21 @@ module riscv_playground(
      if (io_wstrb & mem_address[11]) sdm_blue  <= io_modifier;
 
      if (io_wstrb & mem_address[12]) lcd_ctrl <= io_modifier;
-     //                         13   lcd_data write-only, done with side-effects in LCD code
+     //                         13   lcd_data write-only, side-effects in LCD code
+
+     //                         16   uart_data, side-effects in UART code
+     //                         18   ticks,  side-effects in timer code
+     //                         19   reload, side-effects in timer code
 
      // Variable width access, allows to control the individual bytes
+
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[0]) example[ 7:0]   <= io_modifier[ 7:0 ];
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[1]) example[15:8]   <= io_modifier[15:8 ];
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[2]) example[ 7:0]   <= io_modifier[23:16];
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[3]) example[15:8]   <= io_modifier[31:24];
+
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[1]) port_out        <= io_modifier[15:8 ];
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[2]) port_dir        <= io_modifier[23:16];
 
      if (mem_address_is_io & mem_address[14] & mem_wmask[0]) color_fg0[ 7:0] <= io_modifier[ 7:0 ];
      if (mem_address_is_io & mem_address[14] & mem_wmask[1]) color_fg0[15:8] <= io_modifier[15:8 ];
@@ -628,10 +644,6 @@ module riscv_playground(
      if (mem_address_is_io & mem_address[15] & mem_wmask[1]) color_fg1[15:8] <= io_modifier[15:8 ];
      if (mem_address_is_io & mem_address[15] & mem_wmask[2]) color_bg1[ 7:0] <= io_modifier[23:16];
      if (mem_address_is_io & mem_address[15] & mem_wmask[3]) color_bg1[15:8] <= io_modifier[31:24];
-
-     //                         16   uart_data, side-effects in UART code
-     //                         18   ticks,  side-effects in timer code
-     //                         19   reload, side-effects in timer code
 
    end
 
@@ -730,7 +742,7 @@ module riscv_playground(
    // Boot memory, initialised BRAMs. 1 kb
    /***************************************************************************/
 
-   reg [31:0] BOOT[1*256-1:0]; initial $readmemh("bootloader.hex", BOOT);
+   reg [31:0] BOOT[1024/4-1:0]; initial $readmemh("bootloader.hex", BOOT);
 
    reg [31:0] boot_rdata;
 

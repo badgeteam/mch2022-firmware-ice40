@@ -5,6 +5,6 @@ all :
 	cd rtl && ./compile
 	mv rtl/*.bin ./
 clean :
-	cd fw && make clean
+	cd fw/bootloader && make clean
 	rm -f rtl/build/*
 

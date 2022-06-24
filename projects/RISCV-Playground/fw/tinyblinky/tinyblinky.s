@@ -3,6 +3,9 @@
 #  Fading blinky for RISC-V Playground
 # -----------------------------------------------------------------------------
 
+.option norelax
+.option rvc
+
 Reset:
 
   li x8, 0x40000100              # LED register
