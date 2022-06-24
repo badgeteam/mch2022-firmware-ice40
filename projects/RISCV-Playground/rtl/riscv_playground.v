@@ -38,15 +38,9 @@ module riscv_playground(
            inout [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
 );
 
-	parameter [7:0] CMD_GET_BYTE = 8'hf8;
-	parameter [7:0] CMD_PUT_BYTE = 8'hf9;
-
    /***************************************************************************/
    // Clock.
    /***************************************************************************/
-
-   // wire clk = clk_in; // Directly use 12 MHz
-   // wire pll_locked = 1;
 
    wire clk, pll_locked;
 
@@ -60,8 +54,8 @@ module riscv_playground(
                   .RESETB(1'b1),
                   .BYPASS(1'b0),
                   .LOCK(pll_locked),
-                  .PACKAGEPIN(clk_in),
-                  .PLLOUTGLOBAL(clk) // 15 MHz
+                  .PACKAGEPIN(clk_in),  // 12 MHz
+                  .PLLOUTGLOBAL(clk)    // 15 MHz (minimum for the SPI interface on the badge)
                 );
 
    /***************************************************************************/
@@ -163,10 +157,11 @@ module riscv_playground(
    end
 
    /***************************************************************************/
-   // Example register.
+   // Example register. You can hook your logic here!
    /***************************************************************************/
 
-   reg [31:0] example = 0; // You can hook your logic here!
+   reg  [31:0] example = 0;
+   wire [31:0] example_feedback = example ^ example[31:1];
 
    /***************************************************************************/
    // GPIO.
@@ -577,29 +572,30 @@ module riscv_playground(
 
    wire [31:0] io_rdata =
 
-      (mem_address[ 4] ?  example                                  : 32'd0) |  // RW: Example register
-      (mem_address[ 5] ?  {port_dir, port_out, port_in}            : 32'd0) |  // RW: GPIO
-      (mem_address[ 6] ?  random                                   : 32'd0) |  // R:  Random bit
-      (mem_address[ 7] ?  buttonstate[26:16]                       : 32'd0) |  // R:  Buttons
+      (mem_address[ 4] ?  {port_dir, port_out, port_in}                    : 32'd0) |  // RW: GPIO
+      (mem_address[ 5] ?  example                                          : 32'd0) |  // RW: Example register
+      (mem_address[ 6] ?  example_feedback                                 : 32'd0) |  // R:  Example feedback
+      (mem_address[ 7] ?  buttonstate[26:16]                               : 32'd0) |  // R:  Buttons
 
-      (mem_address[ 8] ?  {blue_in, green_in, red_in, LEDs}        : 32'd0) |  // RW: [6:4] LED inputs [2:0] LEDs outputs
-      (mem_address[ 9] ?  sdm_red                                  : 32'd0) |  // RW: Sigma-delta modulator brightness for red   channel
-      (mem_address[10] ?  sdm_green                                : 32'd0) |  // RW: Sigma-delta modulator brightness for green channel
-      (mem_address[11] ?  sdm_blue                                 : 32'd0) |  // RW: Sigma-delta modulator brightness for blue  channel
+      (mem_address[ 8] ?  {blue_in, green_in, red_in, LEDs}                : 32'd0) |  // RW: [6:4] LED inputs [2:0] LEDs outputs
+      (mem_address[ 9] ?  sdm_red                                          : 32'd0) |  // RW: Sigma-delta modulator brightness for red   channel
+      (mem_address[10] ?  sdm_green                                        : 32'd0) |  // RW: Sigma-delta modulator brightness for green channel
+      (mem_address[11] ?  sdm_blue                                         : 32'd0) |  // RW: Sigma-delta modulator brightness for blue  channel
 
-      (mem_address[12] ?  {updating,fmark_sync2,lcd_mode,lcd_ctrl} : 32'd0) |
-      //           13      lcd_data write-only                                 // WO: Handled in LCD code
-      (mem_address[14] ?  {color_bg0, color_bg0}                   : 32'd0) |
-      (mem_address[15] ?  {color_bg1, color_fg1}                   : 32'd0) |
+      (mem_address[12] ?  {updating,fmark_sync2,lcd_mode,lcd_ctrl}         : 32'd0) |
+      //           13      lcd_data write-only                                         // WO: Handled in LCD code
+      (mem_address[14] ?  {color_bg0, color_bg0}                           : 32'd0) |
+      (mem_address[15] ?  {color_bg1, color_fg1}                           : 32'd0) |
 
-      (mem_address[16] |                                                       // RW: Write: Data to send (8 bits) Read: Received data (8 bits) and flags
-       mem_address[17] ? {serial_busy, serial_valid, serial_data}  : 32'd0) |  // RO: Status. [9]: Busy sending [8]: Valid read data [7]: Read data without dropping from receive FIFO
-      (mem_address[18] ?  ticks                                    : 32'd0) |  // RW: Timer count register
-      (mem_address[19] ?  reload                                   : 32'd0) ;  // RW: Timer reload value
+      (mem_address[16] |                                                               // RW: Write: Data to send (8 bits) Read: Received data (8 bits) and flags
+       mem_address[17] ? {random, serial_busy, serial_valid, serial_data}  : 32'd0) |  // RO: Status. [10]: Random [9]: Busy sending [8]: Valid read data [7]: Read data without dropping from receive FIFO
+      (mem_address[18] ?  ticks                                            : 32'd0) |  // RW: Timer count register
+      (mem_address[19] ?  reload                                           : 32'd0) ;  // RW: Timer reload value
 
       //        27-20     Unused
 
 
+   // This is for preparing the value to allow atomic clear, set, toggle capabilities on writes to IO registers!
    wire [31:0] io_modifier = (mem_address[3:2] == 2'b01)    ? ~mem_wdata & io_rdata :  // Clear
                              (mem_address[3:2] == 2'b10)    ?  mem_wdata | io_rdata :  // Set
                              (mem_address[3:2] == 2'b11)    ?  mem_wdata ^ io_rdata :  // Toggle
@@ -609,9 +605,6 @@ module riscv_playground(
    begin
 
      // Word-only access
-
-     if (io_wstrb & mem_address[ 5]) port_out  <= io_modifier;
-     if (io_wstrb & mem_address[ 6]) port_dir  <= io_modifier;
 
      if (io_wstrb & mem_address[ 8]) LEDs      <= io_modifier;
      if (io_wstrb & mem_address[ 9]) sdm_red   <= io_modifier;
@@ -627,13 +620,13 @@ module riscv_playground(
 
      // Variable width access, allows to control the individual bytes
 
-     if (mem_address_is_io & mem_address[ 4] & mem_wmask[0]) example[ 7:0]   <= io_modifier[ 7:0 ];
-     if (mem_address_is_io & mem_address[ 4] & mem_wmask[1]) example[15:8]   <= io_modifier[15:8 ];
-     if (mem_address_is_io & mem_address[ 4] & mem_wmask[2]) example[ 7:0]   <= io_modifier[23:16];
-     if (mem_address_is_io & mem_address[ 4] & mem_wmask[3]) example[15:8]   <= io_modifier[31:24];
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[1]) port_out        <= io_modifier[15:8 ];
+     if (mem_address_is_io & mem_address[ 4] & mem_wmask[2]) port_dir        <= io_modifier[23:16];
 
-     if (mem_address_is_io & mem_address[ 5] & mem_wmask[1]) port_out        <= io_modifier[15:8 ];
-     if (mem_address_is_io & mem_address[ 5] & mem_wmask[2]) port_dir        <= io_modifier[23:16];
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[0]) example[ 7:0 ]  <= io_modifier[ 7:0 ];
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[1]) example[15:8 ]  <= io_modifier[15:8 ];
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[2]) example[23:16]  <= io_modifier[23:16];
+     if (mem_address_is_io & mem_address[ 5] & mem_wmask[3]) example[31:24]  <= io_modifier[31:24];
 
      if (mem_address_is_io & mem_address[14] & mem_wmask[0]) color_fg0[ 7:0] <= io_modifier[ 7:0 ];
      if (mem_address_is_io & mem_address[14] & mem_wmask[1]) color_fg0[15:8] <= io_modifier[15:8 ];

@@ -14,7 +14,7 @@ mecrisp-quintus-mch2022.bin : memmap mecrisp-quintus-mch2022.o
 	$(RISCVGNU)-objcopy mecrisp-quintus-mch2022.elf mecrisp-quintus-mch2022.bin -O binary
 
 clean:
-	rm -f *.bin
+	# rm -f *.bin
 	rm -f *.o
 	rm -f *.elf
 	rm -f *.list
