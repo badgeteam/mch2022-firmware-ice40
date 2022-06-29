@@ -23,6 +23,7 @@ dint -lcd new
   $08D0 constant pwm-green
   $08E0 constant pwm-blue
 
+: buttons $08F0 io@ ; \ Read button state
 
 \ -----------------------------------------------------------------------------
 \   Shortcuts for quick manual pin handling

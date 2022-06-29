@@ -7,7 +7,143 @@ A Forth compiler for the MCH2022 badge.
 
 Matthias Koch, mecrisp.sourceforge.net
 
-Specials for MCH2022 badge to be documented soon!
+;------------------------------------------------------------------------------
+; IO and PMOD laboratory
+;------------------------------------------------------------------------------
+
+Registers and lowlevel IO:
+
+        in              ( -- io-addr )  PMOD in register
+
+        out             ( -- io-addr )  PMOD out register
+        out-clr         ( -- io-addr )    Write to  clear bits
+        out-set         ( -- io-addr )    Write to    set bits
+        out-xor         ( -- io-addr )    Write to toggle bits
+
+        dir             ( -- io-addr )  PMOD direction register. 0: Input, 1: Output
+        dir-clr         ( -- io-addr )     Write to  clear bits
+        dir-set         ( -- io-addr )     Write to    set bits
+        dir-xor         ( -- io-addr )     Write to toggle bits
+
+        leds-special    ( -- io-addr )  Direct LED access. [6:4]: In [2:0]: Constant current drivers
+        pwm-red         ( -- io-addr )  16 bit dimmer on red
+        pwm-green       ( -- io-addr )  16 bit dimmer on green
+        pwm-blue        ( -- io-addr )  16 bit dimmer on blue
+
+        buttons         ( -- x ) Read current button state
+
+Shortcuts for manual experimentation, u between 0 and 7:
+
+        h               ( u -- ) Set pin high
+        l               ( u -- ) Set pin low
+        t               ( u -- ) Toggle pin
+        z               ( u -- ) Set pin as input
+
+Fun with colors:
+
+        rgb             ( r g b -- ) Set dimmers for RGB LED with RGB value
+        color           ( x -- ) Use LCD 5:6:5 color constant on RGB LED
+
+Artwork and user interface:
+
+        time            ( -- ud ) Read 32 bit millisecond counter
+        blink           ( -- ) Blink LEDs inserted into PMOD connector
+        printrandom     ( -- ) A little artwort
+        pmod-lab        ( -- ) This is the turnkey definition, initialising everything
+
+For internal usage:
+
+        (ms)            ( -- a-addr ) Double variable for milliseconds elapsed, updated in interrupt
+        interrupt       ( -- ) Updates (ms) and the pinstate display
+        avgshift        ( -- u ) Shift width constant for smoothing filter
+        expavg          ( avg x -- avg' ) Exponential moving average
+        pinstate        ( -- ) Update pin state display prepared by pmod-lab
+     green-sunshine     ( -- a-addr ) Variable for counting current brightness
+     average-sunshine   ( -- a-addr ) Variable for smoothing average brightness
+     sunshine-indicator ( u -- ) Show bar with values from 0 to 16
+
+;------------------------------------------------------------------------------
+; Textmode on 320x240 LCD
+;------------------------------------------------------------------------------
+
+        lcd-init        ( -- ) Initialise LCD
+        waitretrace     ( -- ) Wait for end of current update activity
+
+        char!           ( x addr -- ) Character memory store, 0 to 1199. 7-Bit ASCII, MSB selects color pair.
+        char@           ( addr -- x ) Read from character memory
+
+        font!           ( x addr -- ) Font memory store, 0 to 1023. 8 bytes per glyph, 128 glyphs.
+        font@           ( addr -- x ) Read from font memory, 0 to 1023
+
+        fg0             ( -- io-addr ) Normal    foreground color register
+        bg0             ( -- io-addr ) Normal    background color register
+        fg1             ( -- io-addr ) Highlight foreground color register
+        bg1             ( -- io-addr ) Highlight background color register
+
+        BLACK      MAROON     DARKGREY  RED      ORANGE
+        NAVY       PURPLE     BLUE      MAGENTA  GREENYELLOW
+        DARKGREEN  OLIVE      GREEN     YELLOW   PINK
+        DARKCYAN   LIGHTGREY  CYAN      WHITE
+
+                        ( -- x ) Color constants, 16 bit RGB 5:6:5 format
+
+Default colors are:
+
+    yellow fg0 io!  \ Normal foreground
+    navy   bg0 io!  \ Normal background
+    cyan   fg1 io!  \ Highlight foreground
+    navy   bg1 io!  \ Highlight background
+
+For internal usage:
+
+        lcd-ctrl        ( -- io-addr ) LCD control lines
+        lcd-data        ( -- io-addr ) LCD data, writeonly. Set $100 for commands.
+        cmd>lcd         ( c -- )       Write command byte to LCD
+           >lcd         ( c -- )       Write data byte to LCD
+
+;------------------------------------------------------------------------------
+; Character handling for text mode
+;------------------------------------------------------------------------------
+
+        highlight       ( -- ) Following text shall be highlighted
+        normal          ( -- ) Following text shall be normal color
+
+        caption         ( -- ) Fix caption lines when scrolling
+        nocaption       ( -- ) Remove caption protection
+
+        page            ( -- ) Clear display (but leave caption)
+        clr             ( -- ) Same as page, just an alias
+
+        +lcd            ( -- ) Terminal output both on LCD and serial
+        -lcd            ( -- ) Serial terminal only
+
+For internal usage:
+
+        xpos            ( -- a-addr ) Variable for cursor x position
+        ypos            ( -- a-addr ) Variable for cursor y position
+        textmarker      ( -- a-addr ) Variable for text highlighting
+        captionchars    ( -- a-addr ) Variable for amount of fixed characters
+
+        addline         ( -- ) Scroll up display contents by one line
+        addchar         ( c -- ) Add one character and advance cursor position
+        stepback        ( -- ) Go back to last cursor position
+        lcd-emit        ( c -- ) Add one character, handling line feed, backspace and UTF-8
+
+        dispatch-emit   ( c -- ) Fork output both for LCD and serial terminal
+
+
+;------------------------------------------------------------------------------
+; Miscellaneous
+;------------------------------------------------------------------------------
+
+        cycles          ( -- u ) Read continuous cycle counter
+        delay-cycles    ( u -- ) Delay given number of cycles
+
+        sram@           ( addr -- x ) Read  128 kb word addressed data memory
+        sram!           ( x addr -- ) Write 128 kb word addressed data memory
+
+        esc?            ( -- Flag ) Check whether Escape was pressed
+
 
 ;------------------------------------------------------------------------------
 Here comes a word list,                                          -- Glossary --

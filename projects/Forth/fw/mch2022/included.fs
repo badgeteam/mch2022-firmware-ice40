@@ -610,6 +610,11 @@ allot here constant BUF
   $35 ( ILI9341_TEON      ) cmd>lcd $00 >lcd
 ;
 
+: waitretrace ( -- ) \ Wait for end of screen update actvity
+    begin lcd-ctrl io@ $10 and    until \ LCD currently updating
+    begin lcd-ctrl io@ $10 and 0= until \ LCD not updating anymore
+;
+
 \ -----------------------------------------------------------------------------
 \  Text mode with character buffer
 \ -----------------------------------------------------------------------------
@@ -746,6 +751,7 @@ dint -lcd new
   $08D0 constant pwm-green
   $08E0 constant pwm-blue
 
+: buttons $08F0 io@ ; \ Read button state
 
 \ -----------------------------------------------------------------------------
 \   Shortcuts for quick manual pin handling

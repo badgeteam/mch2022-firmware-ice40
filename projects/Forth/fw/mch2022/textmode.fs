@@ -69,6 +69,11 @@
   $35 ( ILI9341_TEON      ) cmd>lcd $00 >lcd
 ;
 
+: waitretrace ( -- ) \ Wait for end of screen update actvity
+    begin lcd-ctrl io@ $10 and    until \ LCD currently updating
+    begin lcd-ctrl io@ $10 and 0= until \ LCD not updating anymore
+;
+
 \ -----------------------------------------------------------------------------
 \  Text mode with character buffer
 \ -----------------------------------------------------------------------------

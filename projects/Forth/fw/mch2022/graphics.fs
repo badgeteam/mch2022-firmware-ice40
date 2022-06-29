@@ -24,6 +24,12 @@
     lcd-ctrl io@ 4 ( LCD_MODE ) and
   until
 
+  1 ( LCD_CS_N )                    lcd-ctrl io!
+  1 ms
+  1 ( LCD_CS_N ) 2 ( LCD_RST_N ) or lcd-ctrl io!
+  120 ms
+                 2 ( LCD_RST_N )    lcd-ctrl io!
+
   \ Initialisation sequence
 
   $CF ( ILI9341_POWERB    ) cmd>lcd $00 >lcd $C1 >lcd $30 >lcd
@@ -100,13 +106,13 @@
 
       r> or
 
-      if
+  if
         255 lcd-data io!
         255 lcd-data io!
-      else
+  else
           0 lcd-data io!
           0 lcd-data io!
-      then
+  then
 
 
       dup 0 =

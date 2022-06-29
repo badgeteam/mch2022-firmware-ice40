@@ -17,3 +17,5 @@ fpc -XX ../common-crosscompiler/icecreammachine-16kb.pas
 ../common-crosscompiler/icecreammachine-16kb build/nucleus.hex build/iceimage.hex included.fs > build/log.txt
 
 md5sum build/nucleus.hex build/iceimage.hex
+
+cp build/iceimage.hex ../../rtl
