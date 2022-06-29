@@ -24,7 +24,8 @@ PROJ_TOP_SRC := rtl/mch2022.v
 PROJ_TOP_MOD := top
 
 # Toolchain config
-YOSYS_SYNTH_ARGS = -abc9 -device u -dffe_min_ce_use 4 -dsp -no-rw-check
+YOSYS_ARGS = -q
+YOSYS_SYNTH_ARGS = -abc2 -dsp -relut -no-rw-check
 NEXTPNR_ARGS = --no-promote-globals --ignore-loops
 
 # Target config
