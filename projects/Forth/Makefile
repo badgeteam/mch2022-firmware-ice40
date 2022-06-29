@@ -26,7 +26,7 @@ PROJ_TOP_MOD := top
 # Toolchain config
 YOSYS_ARGS = -q
 YOSYS_SYNTH_ARGS = -abc2 -dsp -relut -no-rw-check
-NEXTPNR_ARGS = --no-promote-globals --ignore-loops
+NEXTPNR_ARGS = --ignore-loops
 
 # Target config
 BOARD ?= mch2022-proto4
