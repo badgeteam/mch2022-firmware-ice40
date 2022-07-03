@@ -18,22 +18,17 @@ PROJ_PREREQ = \
 PROJ_TOP_SRC := rtl/top.v
 PROJ_TOP_MOD := top
 
-# Target config
-BOARD ?= mch2022-proto4
-DEVICE := up5k
-PACKAGE := sg48
-
-PIN_DEF := ../_common/data/$(BOARD).pcf
-
-SEED ?= 4
+PROJ_BIN_FINAL = $(PROJ)-sw.bin
 
 # Toolchain config
 YOSYS_SYNTH_ARGS = -dffe_min_ce_use 4 -abc9 -device u -dsp
-NEXTPNR_ARGS = --no-promote-globals --pre-pack data/clocks.py --pre-place $(CORE_no2ice40_DIR)/sw/serdes-nextpnr-place.py --seed $(SEED)
+
+NEXTPNR_SEED ?= 4
+NEXTPNR_ARGS = --no-promote-globals --pre-pack data/clocks.py --pre-place $(CORE_no2ice40_DIR)/sw/serdes-nextpnr-place.py --seed $(NEXTPNR_SEED)
 NEXTPNR_ARGS += --timing-allow-fail
 
 # Include default rules
-include ../../build/project-rules.mk
+include ../_common/build.mk
 
 # Custom rules
 $(BUILD_TMP)/boot.hex:
@@ -44,12 +39,3 @@ fw_boot/boot.hex:
 
 $(BUILD_TMP)/$(PROJ)-sw.asc: $(BUILD_TMP)/$(PROJ).asc $(BUILD_TMP)/boot.hex fw_boot/boot.hex
 	cat $(BUILD_TMP)/$(PROJ).asc | icebram $(BUILD_TMP)/boot.hex fw_boot/boot.hex > $@
-
-PROG_DEV ?= /dev/ttyACM0
-
-prog-fpga: $(BUILD_TMP)/$(PROJ)-sw.bin
-ifeq ($(PROG_SW),)
-	uart_fpga.py $(PROG_DEV) $<
-else
-	uart_fpga.py $(PROG_DEV) $< 0x355beaa3:$(PROG_SW)
-endif
