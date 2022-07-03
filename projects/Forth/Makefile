@@ -36,7 +36,7 @@ PACKAGE := sg48
 PIN_DEF := ../_common/data/$(BOARD).pcf
 
 # Include default rules
-include ../../build/project-rules.mk
+include ../_common/build.mk
 
 # Custom rules
 $(BUILD_TMP)/iceimage.hex:
