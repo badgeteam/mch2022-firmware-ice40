@@ -25,20 +25,16 @@ PROJ_TESTBENCHES = \
 PROJ_TOP_SRC := rtl/top.v
 PROJ_TOP_MOD := top
 
-# Target config
-BOARD ?= mch2022-proto4
-DEVICE := up5k
-PACKAGE := sg48
-
-PIN_DEF := ../_common/data/$(BOARD).pcf
+PROJ_BIN_FINAL = $(PROJ)-sw.bin
 
 # Toolchain config
 YOSYS_SYNTH_ARGS := -abc9 -device u
+
 NEXTPNR_SEED ?= 15
 NEXTPNR_ARGS = --no-promote-globals --pre-pack data/opt.py --pre-place $(CORE_no2ice40_DIR)/sw/serdes-nextpnr-place.py --seed $(NEXTPNR_SEED)
 
 # Include default rules
-include ../../build/project-rules.mk
+include ../_common/build.mk
 
 # Custom rules
 $(BUILD_TMP)/boot.hex:
@@ -49,6 +45,3 @@ fw/fw_app.hex:
 
 $(BUILD_TMP)/$(PROJ)-sw.asc: $(BUILD_TMP)/$(PROJ).asc $(BUILD_TMP)/boot.hex fw/fw_app.hex 
 	cat $(BUILD_TMP)/$(PROJ).asc | icebram $(BUILD_TMP)/boot.hex fw/fw_app.hex > $@
-
-prog-sw: $(BUILD_TMP)/$(PROJ)-sw.bin
-	iceprog  $<
