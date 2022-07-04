@@ -14,15 +14,11 @@ PROJ_TOP_MOD := riscv_playground
 YOSYS_SYNTH_ARGS = -dsp -relut -abc9 -no-rw-check
 NEXTPNR_ARGS = --ignore-loops
 
-# Target config
-BOARD ?= mch2022-proto4
-DEVICE := up5k
-PACKAGE := sg48
-
-PIN_DEF := ../_common/data/$(BOARD).pcf
+# Default load blinky
+PROG_EXTRA := 0xDABBAD00:fw/tinyblinky/tinyblinky.bin
 
 # Include default rules
-include ../../build/project-rules.mk
+include ../_common/build.mk
 
 # Custom rules
 $(BUILD_TMP)/bootloader.hex:
