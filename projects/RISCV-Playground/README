@@ -3,7 +3,7 @@
 ;  RISC-V Playground
 ;------------------------------------------------------------------------------
 
-This projects contains an example for a complete RISC-V RV32IMC system
+This projects contains an example for a simple RISC-V RV32IMC microcontroller
 based on the FemtoRV32-Gracilis written by Bruno Levy and Matthias Koch:
 
 https://github.com/BrunoLevy/learn-fpga/
@@ -18,33 +18,132 @@ Peripherals included for default:
   - LEDs
   - UART terminal, 115200 Baud 8N1
   - 1 kb initialised RAM for bootloader
-  - 128 kb uninitialised RAM
+  - 128 kb RAM initialised using file read interface over SPI
 
 ;------------------------------------------------------------------------------
 ;  Memory map and IO
 ;------------------------------------------------------------------------------
 
+Memory areas are selected using bits [31:28].
+
+0x00000000 - 0x0001FFFF: 128 kb SPRAM blocks, initialised by bootloader
+0x10000000 - 0x100005FF: 1536 bytes character buffer, 40x30=1200 chars on LCD, byte access only
+0x20000000 - 0x200003FF: 1024 bytes font data, 128 characters, 8 bytes per character, byte access only
+0x40000000 - 0x4FFFFFFF: Peripheral IO registers
+0x80000000 - 0x800003FF: 1 kb initialised BRAM, containing bootloader
+0x90000000 - 0x9FFFFFFF: File read interface over SPI, mapped into memory, read only
+
+The bootloader initialises the large 128 kb RAM block for you reading from file
+0xdabbad00 and also prepares the LCD for textmode display.
+
+For using the display, all you have is to write characters into the 1200 bytes starting
+at 0x10000000. The font (starting at 0x20000000) contains 128 glyphs, taken from the
+Commodore 64 and rearranged for 7 bit ASCII. The MSB (0x80) selects a "highlight" pair of
+foreground/background colors.
+
+Both character and font data areas can be read and written using byte access only.
+
+The IO registers with base 0x40000000 have a few specialities in their address decoding.
+
+All of these are word-addressable with bits [1:0] zero, but also half-word or byte addressable
+using the bits [1] or [1:0], respectively. This is useful, for example, to change background or
+foreground colors separately, or accessing PMOD registers either all at once or separate.
+
+Bits [3:2] are reserved for atomic Clear, Set, Toggle operation when writing.
+
+Address +  0: Normal write, use the value from the processor as-is
+Address +  4: Clear  bits in register that are 1 in the write access
+Address +  8: Set    bits in register that are 1 in the write access
+Address + 12: Toggle bits in register that are 1 in the write access
+
+It works on all writeable registers, and in word, halfword and byte writes.
+Bits [3:2] are ignored on reads.
+
+0x400000010: RW  PMOD [23:16] DIR [15:8] OUT [7:0] IN
+0x400000010: RO  PMOD, byte access: IN
+0x400000011: RW  PMOD, byte access: OUT
+0x400000012: RW  PMOD, byte access: DIR
+
+0x400000020: RW  Example register
+0x400000040: RO  Example feedback register
+0x400000080: RO  Button states
+
+0x400000100: RW  LEDs: [6] Blue in [5] Green in [4] Red in   [3] 0 [2] Blue [1] Green [0] Red
+0x400000200: RW  Sigma-delta modulator brightness for red   channel
+0x400000400: RW  Sigma-delta modulator brightness for green channel
+0x400000800: RW  Sigma-delta modulator brightness for blue  channel
+
+0x400001000: RW  LCD control and sync lines
+0x400002000: WO  LCD data and command
+0x400004000: RW  Normal    color [31:16] background [15:0] foreground
+0x400008000: RW  Highlight color [31:16] background [15:0] foreground
+
+0x400010000: RW  Serial terminal. Write: Send character [7:0]. Read: Received character [7:0] and flags.
+0x400020000: RO  For reading flags [10] Random [9] Busy [8] Valid without removing character [7:0] from receive FIFO.
+
+0x400040000: RW  Timer count register. Generates interrupt on overflow.
+0x400080000: RW  Timer reload value after overflow, default 0.
+
+0x400100000 to
+0x480000000 are unused and can serve for your own enhancements.
+
+Bits [27:4] are one-hot decoded. Every register has its own bit, which simplifies
+the decoding logic, and also allows to set multiple registers at once.
+
+For example, writing to 0x4000C0000 will set both the timer count and timer reload
+register at once to the same value. When reading with multiple bits in [27:4] set,
+the individual register contents are ORed together.
+
+The serial terminal flags contain a ring oscillator used for random numbers,
+but wait (a few) 100 clock cycles before capturing the next random bit because
+one gets correlations between the bits when reading too fast.
+Just give the ring oscillator a little bit of time to drift away.
+
+Button state bits are:
+
+    0 - joystick down
+    1 - joystick up
+    2 - joystick left
+    3 - joystick right
+    4 - joystick press
+    5 - home
+    6 - menu
+    7 - select
+    8 - start
+    9 - accept
+   10 - back
+
 ;------------------------------------------------------------------------------
-;  Firmware
+;  Example firmware
 ;------------------------------------------------------------------------------
 
-Example software is work-in-progress.
+Bootloader:
 
-Currently it runs Mecrisp-Quintus, a 32 Bit Forth implementation.
+  This one is included into the bitstream for default.
+  It initialises the LCD display and initialises the 128 kb RAM from
+  file "0xdabbad00" using the file read interface over SPI provided
+  by the ESP32 firmware.
 
-http://mecrisp.sourceforge.net/
+Tinyblinky:
 
-The binary is LZ4 compressed and split in two parts to fit into
-the initialised RAM area and the initial text buffer contents.
+  A little blinky in RISC-V assembler. A nice "hello world" project.
 
-These parts are decompressed on boot into the uninitialised RAM area,
-with a decompressor modified from:
+Hello GCC:
 
-https://github.com/enthusi/lz4_rv32i_decode
+  A small project in C featuring serial terminal, buttons, LED and LCD.
+  Connect to this one with 115200 baud 8N1 LF on ttyACM1.
 
-;------------------------------------------------------------------------------
-;  Simulation
-;------------------------------------------------------------------------------
+Forth:
 
-An absolute minimum simulation framework is provided that allows to
-relay UART communcation to terminal for quick firmware testing.
+  This is a port of Mecrisp-Quintus, a 32 Bit Forth implementation,
+  available under GPL3.
+
+  For more info, get the full release of Mecrisp-Quintus here:
+
+  http://mecrisp.sourceforge.net/
+
+  Useful for debugging, and maybe for you, too. If you have not used
+  Forth before, better start with this implementation of Forth that
+  comes with much more badge support code:
+
+  https://github.com/badgeteam/mch2022-firmware-ice40/tree/master/projects/Forth

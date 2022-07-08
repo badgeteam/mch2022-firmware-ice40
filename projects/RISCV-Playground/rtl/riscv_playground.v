@@ -584,7 +584,7 @@ module riscv_playground(
 
       (mem_address[12] ?  {updating,fmark_sync2,lcd_mode,lcd_ctrl}         : 32'd0) |
       //           13      lcd_data write-only                                         // WO: Handled in LCD code
-      (mem_address[14] ?  {color_bg0, color_bg0}                           : 32'd0) |
+      (mem_address[14] ?  {color_bg0, color_fg0}                           : 32'd0) |
       (mem_address[15] ?  {color_bg1, color_fg1}                           : 32'd0) |
 
       (mem_address[16] |                                                               // RW: Write: Data to send (8 bits) Read: Received data (8 bits) and flags
