@@ -30,8 +30,8 @@ module riscv_playground(
            output reg  [7:0] lcd_d,
            output reg        lcd_rs,
            output            lcd_wr_n,
-           output reg        lcd_cs_n,
-           output reg        lcd_rst_n,
+           output            lcd_cs_n,
+           output            lcd_rst_n,
            input             lcd_fmark,
            input             lcd_mode,
 

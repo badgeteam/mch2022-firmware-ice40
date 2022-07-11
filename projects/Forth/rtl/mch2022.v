@@ -19,9 +19,9 @@ module top(input clk_in, // 12 MHz
            output reg  [7:0] lcd_d,
            output reg        lcd_rs,
            output            lcd_wr_n,
-           output reg        lcd_cs_n,
-           output reg        lcd_rst_n,
-           input  wire       lcd_fmark,
+           output            lcd_cs_n,
+           output            lcd_rst_n,
+           input             lcd_fmark,
            input             lcd_mode,
 
            inout [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
