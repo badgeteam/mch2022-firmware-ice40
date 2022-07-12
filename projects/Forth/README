@@ -57,6 +57,9 @@ write
 Number input works different internally, but supports
 all the standard number formats (and a bit more).
 
+The most notable extension are s15.16 fixpoint numbers like 3,14159 written
+with a comma instead of a dot.
+
 Dictionary structure is a special snowflake with additional flags
 for constant folding.
 
@@ -186,6 +189,25 @@ Try a game of snake which source code combines a lot of the features:
 
 https://github.com/badgeteam/mch2022-firmware-ice40/blob/master/projects/Forth/fw/mch2022/snake.fs
 
+;------------------------------------------------------------------------------
+; Build instructions
+;------------------------------------------------------------------------------
+
+Due to dependencies, the Makefile only re-synthesises the bitstream,
+not the firmware which is contained in the BRAM initialisation.
+
+For a complete build of the whole project, you need Gforth and Freepascal
+(packages gforth and fpc on Debian) installed.
+
+Gforth compiles the assembler and the Forth core, which is run in an emulator
+for the stack processor written in Pascal to compile additional Forth sources.
+At the end, a memory dump is written by the "icecreammachine" emulator.
+
+Change directory to Forth/fw/mch2022/ and start the "compilenucleus" script
+which creates a fresh memory image and copies the result to Forth/rtl folder.
+
+For running a definition directly after boot, store its address into the
+"init" variable.    ' pmod-lab init !
 
 ;------------------------------------------------------------------------------
 ; IO and PMOD laboratory
@@ -433,14 +455,14 @@ Double-Jugglers:        They perform the same for double numbers.
         s>d             ( n -- d ) Makes a signed single number double length
 
 ;------------------------------------------------------------------------------
-; Comparisions
+; Comparisons
 ;------------------------------------------------------------------------------
 
-        u<=             ( u1 u2 -- flag )   Unsigned comparisions
+        u<=             ( u1 u2 -- flag )   Unsigned comparisons
         u>=             ( u1 u2 -- flag )
         u>              ( u1 u2 -- flag )
         u<              ( u1 u2 -- flag )
-        <=              ( n1 n2 -- flag )   Signed comparisions
+        <=              ( n1 n2 -- flag )   Signed comparisons
         >=              ( n1 n2 -- flag )
         >               ( n1 n2 -- flag )
         <               ( n1 n2 -- flag )
@@ -454,6 +476,72 @@ Double-Jugglers:        They perform the same for double numbers.
         d0=             ( d -- flag )
 
         within          ( x1 x2 x3 -- ? )   Check if x1 is within x2 and x3.
+
+;------------------------------------------------------------------------------
+; Extension for double and s15.16 fixpoint numbers
+;------------------------------------------------------------------------------
+
+        2constant name  ( ud|d -- ) Makes a double constant.
+        2variable name  ( ud|d -- ) Makes an initialized double variable
+
+        du<=            ( ud1 ud2 -- flag )   Unsigned double comparisons
+        du>=            ( ud1 ud2 -- flag )
+        du>             ( ud1 ud2 -- flag )
+        du<             ( ud1 ud2 -- flag )
+
+        d<=             ( d1 d2 -- flag )     Signed double comparisons
+        d>=             ( d1 d2 -- flag )
+        d>              ( d1 d2 -- flag )
+        d<              ( d1 d2 -- flag )
+
+        d0<             ( d -- flag )         Negative ?
+        d<>             ( xd1 xd2 -- flag )
+        d=              ( xd1 xd2 -- flag )
+
+        dmax            ( d1 d2 -- d1|d2 ) Keeps smaller of top two items
+        dmin            ( d1 d2 -- d1|d2 ) Keeps greater of top two items
+
+        2rot            ( xd1 xd2 xd3 -- xd2 xd3 xd1 )
+        2nip            ( xd1 xd2 -- xd2 )
+
+        2xor            ( xd1 xd2 -- xd3 ) Bitwise Exclusive-OR
+        2or             ( xd1 xd2 -- xd3 ) Bitwise OR
+        2and            ( xd1 xd2 -- xd3 ) Bitwise AND
+
+        d2/             ( d1 -- d2 )   Arithmetric right-shift
+        dshr            ( xd1 -- xd2 ) Logic right-shift
+
+        2arshift        ( xd1 u -- xd2 ) Arithmetric right-shift of u bit-places
+        2rshift         ( xd1 u -- xd2 ) Logical right-shift of u bit-places
+        2lshift         ( xd1 u -- xd2 ) Logical  left-shift of u bit-places
+
+        ud/mod          ( ud1 ud2 -- ud3 ud4 ) 32/32 = 32 rem 32 Division
+                                               ud1 / ud2 = ud4 remainder ud3
+
+Fixpoint numbers are stored ( n-comma n-whole ) and can be handled
+like signed double numbers.
+
+        s>f             ( n -- df ) Single integer to s15.16 fixpoint
+
+        f/              ( df1 df2 -- df3 ) Division of two fixpoint numbers
+        f*              ( df1 df2 -- df3 ) Multiplication
+
+        hold<           ( char -- )
+                        Adds character to pictured number output buffer
+                        from behind.
+        f#              ( n-comma1 -- n-comma2 )
+                        Adds one comma-digit to number output
+        f.              ( df -- )
+                        Prints a fixpoint number with 16 fractional digits
+        f.n             ( df n -- )
+                        Prints a fixpoint number with n fractional digits
+
+For internal usage:
+
+        (ud/mod)        ( -- ) Common part of ud/mod and f/
+        divisor         ( -- a-addr ) Double variable
+        shift           ( -- a-addr ) Double variable
+        dividend        ( -- a-addr ) Double variable
 
 ;------------------------------------------------------------------------------
 ; Tools for number input
