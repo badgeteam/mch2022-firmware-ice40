@@ -3,9 +3,189 @@
 ;  Mecrisp-Ice - A conveniently enhanced fork of Swapforth by James Bowman
 ;------------------------------------------------------------------------------
 
-A Forth compiler for the MCH2022 badge.
+Mecrisp-Ice Forth running on a stack processor in the FPGA of the MCH2022 badge
+for quick experiments with your creative ideas on the Pmod connector.
+
+Load the bitstream and connect terminal with 115200 baud 8N1 LF to ttyACM1
 
 Matthias Koch, mecrisp.sourceforge.net
+
+;------------------------------------------------------------------------------
+; What makes this Forth special
+;------------------------------------------------------------------------------
+
+This 16 bit Forth runs on a custom stack processor designed for Forth,
+generates native code, and handles optimisations like constant-folding
+and tail-call.
+
+It features interrupts, with a fixed latency of 2 clock cycles for
+realtime challenges.
+
+UTF-8 Unicode support baked in!
+You can develop in any human language you like.
+
+Once upon a time, it started as a fork of Swapforth and the J1 CPU
+by James Bowman: https://github.com/jamesbowman/swapforth/
+
+;------------------------------------------------------------------------------
+; New to Forth?
+;------------------------------------------------------------------------------
+
+Typing WORDS gives a list of all available commands.
+
+A very short primer to get an idea:
+
+https://jeelabs.org/article/1612b/
+
+And the classic introduction to Forth:
+
+https://www.forth.com/starting-forth/
+
+;------------------------------------------------------------------------------
+; Notes for standard Forth wizards coming from ANS
+;------------------------------------------------------------------------------
+
+Mecrisp-Ice is using initialised variables like FIG-Forth, so instead of
+
+  variable answer  42 answer !
+
+write
+
+          42  variable answer
+  $1234.5678 2variable longresult
+
+Number input works different internally, but supports
+all the standard number formats (and a bit more).
+
+Dictionary structure is a special snowflake with additional flags
+for constant folding.
+
+This implementation is case-insensitive, but only for letters 'a' to 'z'.
+UTF-8 Unicode encoded characters beyond 7 bit ASCII are case-sensitive.
+
+Before quickly uploading source code, switch off the terminal LCD echo
+and pin state display using
+
+  dint -lcd
+
+;------------------------------------------------------------------------------
+; Memory map and IO registers
+;------------------------------------------------------------------------------
+
+This Forth has separate address spaces for main memory and IO area.
+
+$0000 to $2FFF: 12 kb executable main memory, accessible with @ ! c@ c!
+
+Two special locations are located in main memory:
+
+$0000 is the reset vector
+        (and typically holds a jump opcode)
+$0002 is the interrupt vector
+        (and either holds return opcode $608C or a jump to the interrupt handler)
+
+All opcodes execute in one clock cycle, except @ because the BRAMs
+in iCE40 FPGAs offer one read port only. The trick for reading main memory
+is a call to a high address with $4000 bit set; logic in the processor
+then pushes the "opcode" fetched onto the data stack and returns.
+
+
+The IO area has word-only access with io@ and io!
+
+Available registers:
+
+  $0100: RO  Pmod IN
+
+  $0200: RW  Pmod OUT
+  $0201: WO  Pmod OUT Clear  bits, atomic
+  $0202: WO  Pmod OUT Set    bits, atomic
+  $0203: WO  Pmod OUT Toggle bits, atomic
+
+  $0400: RW  Pmod DIR
+  $0401: WO  Pmod DIR Clear  bits, atomic
+  $0402: WO  Pmod DIR Set    bits, atomic
+  $0403: WO  Pmod DIR Toggle bits, atomic
+
+  $0800: RW  Address for 128 kb SPRAM, word addressed
+  $0810: RW  Read and write to SRAM location, 16 bits wide
+
+  $0820: RW  Address for access of character buffer and font data, byte addressed
+  $0830: RW  Read and write 1024 bytes font data, 128 characters, 8 bytes per character
+  $0840: RW  Read and write 1536 bytes character buffer, 40x30=1200 chars on LCD
+
+  $0850: RW  Normal    color foreground, RGB 5:6:5
+  $0860: RW  Normal    color background, RGB 5:6:5
+  $0870: RW  Highlight color foreground, RGB 5:6:5
+  $0880: RW  Highlight color background, RGB 5:6:5
+
+  $0890: RW  LCD control and sync lines
+  $08A0: WO  LCD data and command
+
+  $08B0: RW  LEDs: [6] Blue in [5] Green in [4] Red in   [3] 0 [2] Blue [1] Green [0] Red
+  $08C0: RW  Sigma-delta modulator brightness for red   channel
+  $08D0: RW  Sigma-delta modulator brightness for green channel
+  $08E0: RW  Sigma-delta modulator brightness for blue  channel
+
+  $08F0: RO  Button states
+
+  $1000: RW  Serial terminal. Write: Send character. Read: Received character.
+  $2000: RO  Flags. [2] Random [1] Valid [0] Ready
+  $4000: RW  Read: Ticks counter. Write: Set ticks. Generates interrupt on overflow.
+  $8000: RO  Free running cycle counter for delays
+
+The serial terminal flags contain a ring oscillator used for random numbers,
+but wait (a few) 100 clock cycles before capturing the next random bit because
+one gets correlations between the bits when reading too fast.
+Just give the ring oscillator a little bit of time to drift away.
+
+"random" does exactly that. Try "random .x" for an example.
+
+Button state bits are:
+
+    0 - joystick down
+    1 - joystick up
+    2 - joystick left
+    3 - joystick right
+    4 - joystick press
+    5 - home
+    6 - menu
+    7 - select
+    8 - start
+    9 - accept
+   10 - back
+
+For accessing the SPRAM, you have to io! the address into $0800 first before reading
+or writing $0810. Note that the memory is word-addressed, so for example
+accessing $CAF1 is *not* the high byte of $CAF0 but a separate word-location.
+This way, the full 128 kb of available SPRAM can be used despite this being a 16 bit
+implementation only.
+
+The font contains 128 glyphs, taken from the Commodore 64 and rearranged
+for 7 bit ASCII. The MSB ($80) selects a "highlight" pair of
+foreground/background colors. The font and character spaces are byte-addressed.
+
+For convenience, sram@ sram! font@ font! char@ char! are defined.
+
+There is also a disassembler, to be used with SEE <name>
+
+see char!
+1BCA : 8820   Imm  0820       0820
+1BCC : 7842   Alu             io!
+1BCE : 8840   Imm  0840       0840
+1BD0 : 78CE   Alu             io! exit
+ ok.
+
+If you want to disassemble any location in main memory, use
+
+$0000 disasm-$ ! seec
+
+The disassembler tries to detect the end of definitions by watching out
+for opcodes with the return bit set, but continues when it encounters
+a jump around that before, for an example, "see dup?"
+
+Try a game of snake which source code combines a lot of the features:
+
+https://github.com/badgeteam/mch2022-firmware-ice40/blob/master/projects/Forth/fw/mch2022/snake.fs
+
 
 ;------------------------------------------------------------------------------
 ; IO and PMOD laboratory
