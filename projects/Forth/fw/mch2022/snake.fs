@@ -109,7 +109,6 @@ maxlength cells buffer: snakepos
   page
   0 snake-x !
   0 snake-y !
-  0 direction !
 
   3 head !
   0 tail !
