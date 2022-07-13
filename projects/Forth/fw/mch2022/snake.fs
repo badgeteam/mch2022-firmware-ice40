@@ -17,7 +17,7 @@ maxlength cells buffer: snakepos
 : xy>cell ( x y -- u ) 8 lshift or ;
 : cell>xy ( u -- x y ) dup $FF and swap 8 rshift ;
 
-: snakelength head @ tail @ - maxlength 1- and ;
+: snakelength ( -- u ) head @ tail @ - maxlength 1- and ;
 
 : printsnake ( -- )
   tail @
@@ -106,6 +106,11 @@ maxlength cells buffer: snakepos
 0 variable time
 
 : init-snake ( -- )
+  page
+  0 snake-x !
+  0 snake-y !
+  0 direction !
+
   3 head !
   0 tail !
 
@@ -119,7 +124,7 @@ maxlength cells buffer: snakepos
 
 : snake ( -- )
   dint -lcd
-  nocaption page
+  nocaption
 
   init-snake
 
@@ -145,9 +150,10 @@ maxlength cells buffer: snakepos
     endcase
 
     snake-x @ snake-y @
-    2dup collision if init-snake then
-    2dup apple-x @ apple-y @ d=
+    2dup 2dup apple-x @ apple-y @ d=
     if eat newapple else crawl then
+
+    collision if init-snake then
 
     time @ 1+ dup hue time !
 
