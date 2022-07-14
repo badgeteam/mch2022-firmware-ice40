@@ -1,0 +1,1421 @@
+
+Mecrisp-Ice 2.6
+
+  ok.
+\ Definitions in high-level Forth that can be compiled by the small  ok.
+\ nucleus itself. They are included into the bitstream for default.  ok.
+  ok.
+\ #######   CORE   ############################################  ok.
+  ok.
+: [']  ok.
+    '  ok.
+; immediate 0 foldable  ok.
+  ok.
+: [char]  ok.
+    char  ok.
+; immediate 0 foldable  ok.
+  ok.
+: (  ok.
+    [char] ) parse 2drop  ok.
+; immediate 0 foldable  ok.
+  ok.
+: u>= ( u1 u2 -- ? ) u< invert ; 2 foldable  ok.
+: u<= ( u1 u2 -- ? ) u> invert ; 2 foldable  ok.
+: >=  ( n1 n2 -- ? )  < invert ; 2 foldable  ok.
+: <=  ( n1 n2 -- ? )  > invert ; 2 foldable  ok.
+  ok.
+: else  ok.
+    postpone ahead  ok.
+    swap  ok.
+    postpone then  ok.
+; immediate  ok.
+  ok.
+: while  ok.
+    postpone if  ok.
+    swap  ok.
+; immediate  ok.
+  ok.
+: repeat  ok.
+     postpone again  ok.
+     postpone then  ok.
+; immediate  ok.
+  ok.
+: create ( "<name>" -- ; -- addr )  ok.
+    :  ok.
+    here 2 cells + postpone literal  ok.
+    postpone ;  ok.
+;  ok.
+  ok.
+: buffer: ( u "<name>" -- ; -- addr )  ok.
+   create allot 0 foldable  ok.
+;  ok.
+  ok.
+: >body ( addr -- addr' )  ok.
+    @ -1 1 rshift and \ Remove the literal opcode MSB  ok.
+;  ok.
+  ok.
+: m* ( n1 n2 -- d )  ok.
+    2dup xor >r  ok.
+    abs swap abs um*  ok.
+    r> 0< if dnegate then  ok.
+; 2 foldable  ok.
+  ok.
+: variable ( x "name" -- ; -- addr )  ok.
+    create ,  ok.
+    0 foldable  ok.
+;  ok.
+  ok.
+: constant ( x "name" -- ; -- x ) : postpone literal postpone ; 0 foldable ;  ok
+.
+  ok.
+: sgn ( u1 n1 -- n2 ) \ n2 is u1 with the sign of n1  ok.
+    0< if negate then  ok.
+; 2 foldable  ok.
+  ok.
+\ Divide d1 by n1, giving the symmetric quotient n3 and the remainder  ok.
+\ n2.  ok.
+: sm/rem ( d1 n1 -- n2 n3 )  ok.
+    2dup xor >r     \ combined sign, for quotient  ok.
+    over >r         \ sign of dividend, for remainder  ok.
+    abs >r dabs r>  ok.
+    um/mod          ( remainder quotient )  ok.
+    swap r> sgn     \ apply to remainder  ok.
+    swap r> sgn     \ apply to quotient  ok.
+; 3 foldable  ok.
+  ok.
+\ Divide d1 by n1, giving the floored quotient n3 and the remainder n2.  ok.
+\ Adapted from hForth  ok.
+: fm/mod ( d1 n1 -- n2 n3 )  ok.
+    dup >r 2dup xor >r  ok.
+    >r dabs r@ abs  ok.
+    um/mod  ok.
+    r> 0< if  ok.
+        swap negate swap  ok.
+    then  ok.
+    r> 0< if  ok.
+        negate         \ negative quotient  ok.
+        over if  ok.
+            r@ rot - swap 1-  ok.
+        then  ok.
+    then  ok.
+    r> drop  ok.
+; 3 foldable  ok.
+  ok.
+: */mod ( n1 n2 n3 -- n4 n5 ) >r m* r> sm/rem ; 3 foldable  ok.
+: */    ( n1 n2 n3 -- n4 )    */mod nip ; 3 foldable  ok.
+  ok.
+: spaces ( n -- )  ok.
+    begin  ok.
+        dup 0>  ok.
+    while  ok.
+        space 1-  ok.
+    repeat  ok.
+    drop  ok.
+;  ok.
+  ok.
+( Pictured numeric output                    JCB 08:06 07/18/14)  ok.
+\ Adapted from hForth  ok.
+  ok.
+\ "The size of the pictured numeric output string buffer shall  ok.
+\ be at least (2*n) + 2 characters, where n is the number of  ok.
+\ bits in a cell."  ok.
+  ok.
+create BUF0  ok.
+16 cells 2 + 128 max  ok.
+allot here constant BUF  ok.
+  ok.
+0 variable hld  ok.
+  ok.
+: <# ( -- )  ok.
+    BUF hld !  ok.
+;  ok.
+  ok.
+: hold ( c -- )  ok.
+    hld @ 1- dup hld ! c!  ok.
+;  ok.
+  ok.
+: sign ( n -- )  ok.
+    0< if  ok.
+        [char] - hold  ok.
+    then  ok.
+;  ok.
+  ok.
+: .digit ( u -- c )  ok.
+  9 over <  ok.
+  [char] A [char] 9 1 + -  ok.
+  and +  ok.
+  [char] 0 +  ok.
+;  ok.
+  ok.
+: # ( ud -- ud* )  ok.
+    0 base @ um/mod >r base @ um/mod swap  ok.
+    .digit hold r>  ok.
+;  ok.
+  ok.
+: #s ( ud -- 0 0 )  ok.
+    begin  ok.
+        #  ok.
+        2dup d0=  ok.
+    until  ok.
+;  ok.
+  ok.
+: #> ( ud -- addr len )  ok.
+    2drop hld @ BUF over -  ok.
+;  ok.
+  ok.
+: (d.) ( d -- addr len )  ok.
+    dup >r dabs <# #s r> sign #>  ok.
+;  ok.
+  ok.
+: ud. ( ud -- )  ok.
+    <# #s #> type space  ok.
+;  ok.
+  ok.
+: d. ( d -- )  ok.
+    (d.) type space  ok.
+;  ok.
+  ok.
+: . ( n -- )  ok.
+    s>d d.  ok.
+;  ok.
+  ok.
+: u. ( u -- )  ok.
+    0 d.  ok.
+;  ok.
+  ok.
+: rtype ( caddr u1 u2 -- ) \ display character string specified by caddr u1  ok.
+
+                           \ in a field u2 characters wide.  ok.
+  2dup u< if over - spaces else drop then  ok.
+  type  ok.
+;  ok.
+  ok.
+: d.r ( d length -- )  ok.
+    >r (d.)  ok.
+    r> rtype  ok.
+;  ok.
+  ok.
+: .r ( n length -- )  ok.
+    >r s>d r> d.r  ok.
+;  ok.
+  ok.
+: u.r ( u length -- )  ok.
+    0 swap d.r  ok.
+;  ok.
+  ok.
+( Memory operations                          JCB 18:02 05/31/15)  ok.
+  ok.
+: move ( addr1 addr2 u -- )  ok.
+    >r 2dup u< if  ok.
+        r> cmove>  ok.
+    else  ok.
+        r> cmove  ok.
+    then  ok.
+;  ok.
+  ok.
+: /mod ( n1 n2 -- n3 n4 ) >r s>d r> sm/rem ; 2 foldable  ok.
+: /    ( n1 n2 -- n3 )    /mod nip ; 2 foldable  ok.
+: mod  ( n1 n2 -- n3 )    /mod drop ; 2 foldable  ok.
+  ok.
+: ."  ok.
+    [char] " parse  ok.
+    state @ if  ok.
+        postpone sliteral  ok.
+        postpone type  ok.
+    else  ok.
+        type  ok.
+    then  ok.
+; immediate 0 foldable  ok.
+  ok.
+\ #######   CORE EXT   ########################################  ok.
+  ok.
+: pad ( -- addr )  ok.
+    here aligned  ok.
+;  ok.
+  ok.
+: within ( n1|u1 n2|u2 n3|u3 -- flag ) over - >r - r> u< ; 3 foldable  ok.
+  ok.
+: s"  ok.
+    [char] " parse  ok.
+    state @ if  ok.
+        postpone sliteral  ok.
+    then  ok.
+; immediate  ok.
+  ok.
+( CASE                                       JCB 09:15 07/18/14)  ok.
+\ From ANS specification A.3.2.3.2  ok.
+  ok.
+: case ( -- 0 ) 0 ; immediate  ( init count of ofs )  ok.
+  ok.
+: of  ( #of -- orig #of+1 / x -- )  ok.
+    1+    ( count ofs )  ok.
+    >r    ( move off the stack in case the control-flow )  ok.
+          ( stack is the data stack. )  ok.
+    postpone over  postpone = ( copy and test case value)  ok.
+    postpone if    ( add orig to control flow stack )  ok.
+    postpone drop  ( discards case value if = )  ok.
+    r>             ( we can bring count back now )  ok.
+; immediate  ok.
+  ok.
+: endof ( orig1 #of -- orig2 #of )  ok.
+    >r   ( move off the stack in case the control-flow )  ok.
+         ( stack is the data stack. )  ok.
+    postpone else  ok.
+    r>   ( we can bring count back now )  ok.
+; immediate  ok.
+  ok.
+: endcase  ( orig1..orign #of -- )  ok.
+    postpone drop  ( discard case value )  ok.
+    0 ?do  ok.
+      postpone then  ok.
+    loop  ok.
+; immediate  ok.
+  ok.
+\ #######   DICTIONARY   ######################################  ok.
+  ok.
+: cornerstone ( "name" -- )  ok.
+  create  ok.
+    forth 2@        \ preserve FORTH and DP after this  ok.
+    , 2 cells + ,  ok.
+  does>  ok.
+    2@ forth 2! \ restore FORTH and DP  ok.
+;  ok.
+  ok.
+\ -------------------------------------------------------------  ok.
+\  Double tools  ok.
+\ -------------------------------------------------------------  ok.
+  ok.
+: 2or  ( d1 d2 -- d ) >r swap >r or  r> r> or  ; 4 foldable  ok.
+: 2and ( d1 d2 -- d ) >r swap >r and r> r> and ; 4 foldable  ok.
+: 2xor ( d1 d2 -- d ) >r swap >r xor r> r> xor ; 4 foldable  ok.
+  ok.
+: d0<   ( d -- ? ) nip 0< ; 2 foldable  ok.
+  ok.
+: d= ( x0 x1 y0 y1 -- ? )  ok.
+  ok.
+  swap ( x0 x1 y1 y0 )  ok.
+  >r   ( x0 x1 y1 R: y0 )  ok.
+  =    ( x0 x1=y1 R: y0 )  ok.
+  swap ( x1=y1 x0 R: y0 )  ok.
+  r>   ( x1=y1 x0 y0 )  ok.
+  =    ( x1=y1 x0=y0 )  ok.
+  and  ok.
+; 4 foldable  ok.
+  ok.
+: d<> d= not ; 4 foldable  ok.
+  ok.
+: d2/  ( x1 x2 -- x1' x2' ) >r 1 rshift r@ 8 cells 1- lshift or r> 2/       ; 2 
+foldable  ok.
+: dshr ( x1 x2 -- x1' x2' ) >r 1 rshift r@ 8 cells 1- lshift or r> 1 rshift ; 2 
+foldable  ok.
+  ok.
+\ : 2lshift  ( ud u -- ud* ) begin dup while >r d2*  r> 1- repeat drop ; 3 folda
+ble  ok.
+\ : 2arshift (  d u --  d* ) begin dup while >r d2/  r> 1- repeat drop ; 3 folda
+ble  ok.
+\ : 2rshift  ( ud u -- ud* ) begin dup while >r dshr r> 1- repeat drop ; 3 folda
+ble  ok.
+  ok.
+: 2lshift ( low high u -- )  ok.
+  dup >r ( low high u R: u )  ok.
+  lshift ( low high* )  ok.
+  over 8 cells r@ - rshift or  ok.
+  over r@ 8 cells - lshift or  ok.
+  swap r> lshift swap  ok.
+; 3 foldable  ok.
+  ok.
+: 2rshift ( low high u -- )  ok.
+  >r swap ( high low R: u )  ok.
+  r@ rshift  ok.
+  over 8 cells r@ - lshift or  ok.
+  over r@ 8 cells - rshift or  ok.
+  swap  ok.
+  r> rshift  ok.
+; 3 foldable  ok.
+  ok.
+: 2arshift ( low high u -- )  ok.
+  dup >r 8 cells u< ( low high R: u )  ok.
+  if  ok.
+    swap ( high low R: u )  ok.
+    r@ rshift  ok.
+    over 8 cells r@ - lshift or  ok.
+  else  ok.
+    nip dup r@ 8 cells - arshift  ok.
+  then  ok.
+  swap r> arshift  ok.
+; 3 foldable  ok.
+  ok.
+: 2nip ( d1 d2 -- d2 )  ok.
+  >r nip nip r>  ok.
+; 4 foldable  ok.
+  ok.
+: 2rot ( d1 d2 d3 -- d2 d3 d1 )  ok.
+  >r >r ( d1 d2 R: d3 )  ok.
+  2swap ( d2 d1 R: d3 )  ok.
+  r> r> ( d2 d1 d3 )  ok.
+  2swap ( d2 d3 d1 )  ok.
+; 6 foldable  ok.
+  ok.
+: d<            \ ( al ah bl bh -- flag )  ok.
+    rot         \ al bl bh ah  ok.
+    2dup =  ok.
+    if  ok.
+        2drop u<  ok.
+    else  ok.
+        > nip nip  ok.
+    then  ok.
+; 4 foldable  ok.
+  ok.
+: d>  ( d1 d2 -- ? ) 2swap d< ; 4 foldable  ok.
+: d>= ( d1 d2 -- ? ) d< not   ; 4 foldable  ok.
+: d<= ( d1 d2 -- ? ) d> not   ; 4 foldable  ok.
+  ok.
+: dmin ( d1 d2 -- d ) 2over 2over d< if 2drop else 2nip then ; 4 foldable  ok.
+: dmax ( d1 d2 -- d ) 2over 2over d< if 2nip else 2drop then ; 4 foldable  ok.
+  ok.
+: du<           \ ( al ah bl bh -- flag )  ok.
+    rot         \ al bl bh ah  ok.
+    2dup =  ok.
+    if  ok.
+        2drop u<  ok.
+    else  ok.
+        u> nip nip  ok.
+    then  ok.
+; 4 foldable  ok.
+  ok.
+: du>  ( d1 d2 -- ? ) 2swap du< ; 4 foldable  ok.
+: du>= ( d1 d2 -- ? ) du< not   ; 4 foldable  ok.
+: du<= ( d1 d2 -- ? ) du> not   ; 4 foldable  ok.
+  ok.
+\ -------------------------------------------------------------  ok.
+\  Fixpoint output  ok.
+\ -------------------------------------------------------------  ok.
+  ok.
+: hold< ( c -- ) \ Add a character at the end of the number string  ok.
+  hld @   dup 1- dup hld !    BUF hld @ -  move  ok.
+  BUF 1- c!  ok.
+;  ok.
+  ok.
+: f# ( u -- u ) base @ um* .digit hold< ;  ok.
+  ok.
+: f.n ( f n -- ) ( f-Low f-High n -- ) \ Prints a s15.16 number  ok.
+  ok.
+  >r ( Low High R: n )  ok.
+  ok.
+  dup 0< if [char] - emit then  ok.
+  dabs  ok.
+  ( uLow uHigh )  ok.
+  0 <# #s   ( uLow 0 0 )  ok.
+  drop swap ( 0 uLow )  ok.
+  ok.
+  [char] , hold<  ok.
+  r> 0 ?do f# loop  ok.
+  ok.
+  #> type space  ok.
+;  ok.
+  ok.
+: f. ( f -- ) 8 cells f.n ;  ok.
+  ok.
+\ -------------------------------------------------------------  ok.
+\  Fixpoint calculations  ok.
+\ -------------------------------------------------------------  ok.
+  ok.
+: 2variable ( d -- ) create , , 0 foldable ;  ok.
+\ : 2constant ( d -- ) create , , 0 foldable does> 2@ ;  ok.
+: 2constant ( d -- ) swap : postpone literal postpone literal postpone ; 0 folda
+ble ;  ok.
+  ok.
+: s>f ( n -- f ) 0 swap ; 1 foldable  \ Signed integer --> Fixpoint s15.16  ok.
+\ : f>s ( f -- n ) nip    ; 2 foldable  \ Fixpoint s15.16 --> Signed integer  ok
+.
+  ok.
+: f* ( f1 f2 -- f )  ok.
+  ok.
+        dup >r dabs  ok.
+  2swap dup >r dabs  ok.
+  ok.
+            ( d c b a )  ok.
+  swap >r   ( d c a R: b )  ok.
+  2dup *    ( d c a ac R: b )  ok.
+  >r        ( d c a R: b ac )  ok.
+  >r        ( d c R: b ac a )  ok.
+  over      ( d c d R: b ac a )  ok.
+  r> um*    ( d c L H R: b ac )  ok.
+  r> +      ( d c L H' R: b )  ok.
+  rot       ( d L H' c R: b )  ok.
+  r@        ( d L H' c b R: b )  ok.
+  um* d+    ( d L' H'' R: b )  ok.
+  rot       ( L' H'' d R: b )  ok.
+  r>        ( L' H'' d b )  ok.
+  um* nip 0 ( L' H'' db 0 )  ok.
+  d+        ( L'' H''' )  ok.
+  ok.
+  r> r> xor 0< if dnegate then  ok.
+  ok.
+; 4 foldable  ok.
+  ok.
+0. 2variable dividend  ok.
+0. 2variable shift  ok.
+0. 2variable divisor  ok.
+  ok.
+: (ud/mod) ( -- )  ok.
+  ok.
+  16 cells  ok.
+  begin  ok.
+  ok.
+    \ Shift the long chain of four cells.  ok.
+  ok.
+       dividend cell+ @ dup 8 cells 1- rshift >r 2*    dividend cell+ !  ok.
+    r> dividend       @ dup 8 cells 1- rshift >r 2* or dividend       !  ok.
+    r>    shift cell+ @ dup 8 cells 1- rshift >r 2* or    shift cell+ !  ok.
+    r>    shift       @                          2* or    shift       !  ok.
+  ok.
+    \ Subtract divisor when shifted out value is large enough  ok.
+  ok.
+    shift 2@ divisor 2@  du>=  ok.
+  ok.
+    if \ Greater or Equal: Subtract !  ok.
+      shift 2@ divisor 2@ d- shift 2!  ok.
+      dividend cell+ @ 1+ dividend cell+ !  ok.
+    then  ok.
+  ok.
+    1- dup 0=  ok.
+  until  ok.
+  drop  ok.
+;  ok.
+  ok.
+: ud/mod ( ud1 ud2 -- ud-rem ud-div )  ok.
+  ok.
+     divisor 2!  ok.
+  0. shift 2!  ok.
+     dividend 2!  ok.
+  ok.
+  (ud/mod)  ok.
+  ok.
+  shift 2@  ok.
+  dividend 2@  ok.
+  ok.
+; 4 foldable  ok.
+  ok.
+: f/ ( f1 f2 -- f )  ok.
+  ok.
+  dup >r dabs  divisor 2!  ok.
+  dup >r dabs  0 Shift 2! 0 swap dividend 2!  ok.
+  ok.
+  (ud/mod)  ok.
+  ok.
+  dividend 2@  ok.
+  r> r> xor 0< if dnegate then  ok.
+  ok.
+; 4 foldable  ok.
+\ #######   MEMORY   ##########################################  ok.
+  ok.
+: unused ( -- u ) $3000 here - ; \ 12 kb  ok.
+  ok.
+\ #######   IO   ##############################################  ok.
+  ok.
+: cycles ( -- u ) $8000 io@ ;  ok.
+  ok.
+   24 constant cycles/us  \ For 24 MHz  ok.
+24000 constant cycles/ms  ok.
+  ok.
+: delay-cycles ( cycles -- )  ok.
+  cycles ( cycles start )  ok.
+  begin  ok.
+    pause  ok.
+    2dup ( cycles start cycles start )  ok.
+    cycles ( cycles start cycles start current )  ok.
+    swap - ( cycles start cycles elapsed )  ok.
+    u<=  ok.
+  until  ok.
+  2drop  ok.
+;  ok.
+  ok.
+: us ( u -- )       cycles/us *  delay-cycles      ;  ok.
+: ms ( u -- ) 0 ?do cycles/ms    delay-cycles loop ;  ok.
+  ok.
+: randombit ( -- 0 | 1 ) $2000 io@ 2 rshift 1 and ;  ok.
+: random ( -- x ) 0  16 0 do 2* randombit or 100 0 do loop loop ;  ok.
+  ok.
+: ticks ( -- u ) $4000 io@ ;  ok.
+  ok.
+: nextirq ( cycles -- ) \ Trigger the next interrupt u cycles after the last one
+.  ok.
+  $4000 io@  \ Read current tick  ok.
+  -           \ Subtract the cycles already elapsed  ok.
+  8 -          \ Correction for the cycles neccessary to do this  ok.
+  invert        \ Timer counts up to zero to trigger the interrupt  ok.
+  $4000 io!      \ Prepare timer for the next irq  ok.
+;  ok.
+  ok.
+: sram@ ( addr -- x ) $0800 io! $0810 io@ ;  ok.
+: sram! ( x addr -- ) $0800 io! $0810 io! ;  ok.
+  ok.
+: esc? ( -- ? ) key? if key 27 = else false then ;  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+\ 320x240 LCD Display ILI9341  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+\ Registers:  ok.
+  ok.
+  $0890 constant lcd-ctrl  \ LCD control lines  ok.
+  $08A0 constant lcd-data  \ LCD data, writeonly. Set $100 for commands.  ok.
+  ok.
+  $0850 constant fg0  \ Normal foreground  ok.
+  $0860 constant bg0  \ Normal background  ok.
+  $0870 constant fg1  \ Highlight foreground  ok.
+  $0880 constant bg1  \ Highlight background  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+: cmd>lcd ( c -- ) $100 or lcd-data io! ; \ Logic handles the command/data line 
+ ok.
+:    >lcd ( c -- ) $FF and lcd-data io! ;  \ and pulses write line.  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+: lcd-init ( -- )  ok.
+  ok.
+  ." Trying to get access to LCD... Press ESC to exit." cr  ok.
+  ok.
+  begin  ok.
+    esc? if welcome quit then  ok.
+    lcd-ctrl io@ 4 ( LCD_MODE ) and  ok.
+  until  ok.
+  ok.
+  1 ( LCD_CS_N )                    lcd-ctrl io!  ok.
+  1 ms  ok.
+  1 ( LCD_CS_N ) 2 ( LCD_RST_N ) or lcd-ctrl io!  ok.
+  120 ms  ok.
+                 2 ( LCD_RST_N )    lcd-ctrl io!  ok.
+  ok.
+  \ Initialisation sequence  ok.
+  ok.
+  $CF ( ILI9341_POWERB    ) cmd>lcd $00 >lcd $C1 >lcd $30 >lcd  ok.
+  $ED ( ILI9341_POWER_SEQ ) cmd>lcd $64 >lcd $03 >lcd $12 >lcd $81 >lcd  ok.
+  $E8 ( ILI9341_DTCA      ) cmd>lcd $85 >lcd $00 >lcd $78 >lcd  ok.
+  $CB ( ILI9341_POWERA    ) cmd>lcd $39 >lcd $2C >lcd $00 >lcd $34 >lcd $02 >lcd
+  ok.
+  $F7 ( ILI9341_PRC       ) cmd>lcd $20 >lcd  ok.
+  $EA ( ILI9341_DTCB      ) cmd>lcd $00 >lcd $00 >lcd  ok.
+  $C0 ( ILI9341_LCMCTRL   ) cmd>lcd $23 >lcd  ok.
+  $C1 ( ILI9341_POWER2    ) cmd>lcd $10 >lcd  ok.
+  $C5 ( ILI9341_VCOM1     ) cmd>lcd $3e >lcd $28 >lcd  ok.
+  $C7 ( ILI9341_VCOM2     ) cmd>lcd $86 >lcd  ok.
+  $36 ( ILI9341_MADCTL    ) cmd>lcd $08 >lcd  ok.
+  $3A ( ILI9341_COLMOD    ) cmd>lcd $55 >lcd  ok.
+  $B1 ( ILI9341_FRMCTR1   ) cmd>lcd $00 >lcd $18 >lcd  ok.
+  $B6 ( ILI9341_DFC       ) cmd>lcd $08 >lcd $82 >lcd $27 >lcd  ok.
+  $F2 ( ILI9341_3GAMMA_EN ) cmd>lcd $00 >lcd  ok.
+  $26 ( ILI9341_GAMSET    ) cmd>lcd $01 >lcd  ok.
+  ok.
+  $E0 ( ILI9341_PVGAMCTRL ) cmd>lcd $0F >lcd $31 >lcd $2B >lcd $0C >lcd $0E >lcd
+  ok.
+                                    $08 >lcd $4E >lcd $F1 >lcd $37 >lcd $07 >lcd
+  ok.
+                                    $10 >lcd $03 >lcd $0E >lcd $09 >lcd $00 >lcd
+  ok.
+  $E1 ( ILI9341_NVGAMCTRL ) cmd>lcd $00 >lcd $0E >lcd $14 >lcd $03 >lcd $11 >lcd
+  ok.
+                                    $07 >lcd $31 >lcd $C1 >lcd $48 >lcd $08 >lcd
+  ok.
+                                    $0F >lcd $0C >lcd $31 >lcd $36 >lcd $0F >lcd
+  ok.
+  ok.
+  $F6 ( ILI9341_INTERFACE ) cmd>lcd $00 >lcd $40 >lcd $00 >lcd  ok.
+  ok.
+  $11 ( ILI9341_SLPOUT    ) cmd>lcd  ok.
+  $29 ( ILI9341_DISPON    ) cmd>lcd  ok.
+  ok.
+  $35 ( ILI9341_TEON      ) cmd>lcd $00 >lcd  ok.
+;  ok.
+  ok.
+: waitretrace ( -- ) \ Wait for end of screen update actvity  ok.
+    begin lcd-ctrl io@ $10 and    until \ LCD currently updating  ok.
+    begin lcd-ctrl io@ $10 and 0= until \ LCD not updating anymore  ok.
+;  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+\  Text mode with character buffer  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+: font! ( x addr -- ) $0820 io!         $0830 io! ; \ Writing of font bitmaps ha
+ppens immediately  ok.
+: font@ ( addr -- x ) $0820 io! nop nop $0830 io@ ; \ Font bitmaps can be read b
+ack three cycles after the address is set  ok.
+  ok.
+: char! ( x addr -- ) $0820 io!         $0840 io! ; \ Writing of characters happ
+ens immediately  ok.
+: char@ ( addr -- x ) $0820 io! nop nop $0840 io@ ; \ Characters can be read bac
+k three cycles after the address is set  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+\   Character handling for text mode  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+0 variable xpos  ok.
+0 variable ypos  ok.
+  ok.
+false variable textmarker  ok.
+  ok.
+: highlight ( -- )  true textmarker ! ;  ok.
+: normal    ( -- ) false textmarker ! ;  ok.
+  ok.
+0 variable captionchars  ok.
+  ok.
+: caption ( -- ) \ Fix caption lines when scrolling  ok.
+  ypos @ 40 * xpos @ + captionchars !  ok.
+;  ok.
+  ok.
+: nocaption ( -- ) 0 captionchars ! ; \ Remove caption protection  ok.
+  ok.
+: page ( -- ) \ Clear display  ok.
+  1200 captionchars @ do 32 i char! loop  ok.
+  captionchars @ 40 /mod ypos ! xpos !  ok.
+;  ok.
+  ok.
+: clr ( -- ) page ; \ Just an intuitive alias for page  ok.
+  ok.
+: addline ( -- )  ok.
+  ypos @ 29 < if  ok.
+    1 ypos +!  ok.
+  else  ok.
+    1200 40 captionchars @ + do i char@ i 40 - char! loop  ok.
+    1200 1160 do 32 i char! loop  ok.
+  then  ok.
+  0 xpos !  ok.
+;  ok.
+  ok.
+: addchar ( c -- )  ok.
+  textmarker @ if $80 or then  ok.
+  xpos @ 39 > if addline 0 xpos ! then  ok.
+  ypos @ 40 * xpos @ + char!  ok.
+  1 xpos +!  ok.
+;  ok.
+  ok.
+: stepback ( -- )  ok.
+  xpos @  ok.
+  if  ok.
+    -1 xpos +!  ok.
+  else  ok.
+    ypos @ if -1 ypos +! 39 xpos ! then  ok.
+  then  ok.
+;  ok.
+  ok.
+: lcd-emit ( c -- )  ok.
+  case  ok.
+    10 of addline  endof \ Line Feed  ok.
+     8 of stepback endof \ Backspace  ok.
+    dup $C0 and $80 <> if dup 127 umin addchar then \ Display block glyph for UT
+F-8 chars.  ok.
+  endcase  ok.
+;  ok.
+  ok.
+\ Replace the io! at the end of emit with a jump to this  ok.
+\ for hooking the LCD into the terminal.  ok.
+  ok.
+: dispatch-emit ( c -- ) over lcd-emit io! ;  ok.
+  ok.
+: +lcd ( -- ) ['] dispatch-emit 2/  ['] emit 6 + ! ;  ok.
+: -lcd ( -- ) $78CE                 ['] emit 6 + ! ;  ok.
+  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+\  Color constants by Andrew Palm  ok.
+\ ----------------------------------------------------------------------------- 
+ ok.
+  ok.
+\ Colors are 565 RGB (5 bits Red, 6 bits green, 5 bits blue)  ok.
+  ok.
+$0000 constant BLACK       \    0,   0,   0  ok.
+$000F constant NAVY        \    0,   0, 128  ok.
+$03E0 constant DARKGREEN   \    0, 128,   0  ok.
+$03EF constant DARKCYAN    \    0, 128, 128  ok.
+$7800 constant MAROON      \  128,   0,   0  ok.
+$780F constant PURPLE      \  128,   0, 128  ok.
+$7BE0 constant OLIVE       \  128, 128,   0  ok.
+$C618 constant LIGHTGREY   \  192, 192, 192  ok.
+$7BEF constant DARKGREY    \  128, 128, 128  ok.
+$001F constant BLUE        \    0,   0, 255  ok.
+$07E0 constant GREEN       \    0, 255,   0  ok.
+$07FF constant CYAN        \    0, 255, 255  ok.
+$F800 constant RED         \  255,   0,   0  ok.
+$F81F constant MAGENTA     \  255,   0, 255  ok.
+$FFE0 constant YELLOW      \  255, 255,   0  ok.
+$FFFF constant WHITE       \  255, 255, 255  ok.
+$FD20 constant ORANGE      \  255, 165,   0  ok.
+$AFE5 constant GREENYELLOW \  173, 255,  47  ok.
+$F81F constant PINK        \  255,   0, 255  ok.
+  ok.
+\ Default colors are:  ok.
+\  ok.
+\   yellow fg0 io!  \ Normal foreground  ok.
+\   navy   bg0 io!  \ Normal background  ok.
+\   cyan   fg1 io!  \ Highlight foreground  ok.
+\   navy   bg1 io!  \ Highlight background  ok.
+  ok.
+\ #######   DUMP   ############################################  ok.
+  ok.
+: dump  ok.
+    ?dup  ok.
+    if  ok.
+        1- 4 rshift 1+  ok.
+        0 do  ok.
+            cr dup dup .x space space  ok.
+            16 0 do  ok.
+                dup c@ .x2 1+  ok.
+            loop  ok.
+            space swap  ok.
+            16 0 do  ok.
+                dup c@ dup bl 127 within invert if  ok.
+                    drop [char] .  ok.
+                then  ok.
+                emit 1+  ok.
+            loop  ok.
+            drop  ok.
+        loop  ok.
+    then  ok.
+    drop  ok.
+;  ok.
+  ok.
+\ #######   INSIGHT   #########################################  ok.
+  ok.
+  ok.
+( Deep insight into stack, dictionary and code )  ok.
+( Matthias Koch )  ok.
+  ok.
+: .s ( -- )  ok.
+  \ Save initial depth  ok.
+  depth dup >r  ok.
+  ok.
+  \ Flush stack contents to temporary storage  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    1-  ok.
+    swap  ok.
+    over cells pad + !  ok.
+  repeat  ok.
+  drop  ok.
+  ok.
+  \ Print original depth  ok.
+  ." [ "  ok.
+  r@ .x2  ok.
+  ." ] "  ok.
+  ok.
+  \ Print all elements in reverse order  ok.
+  r@  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    r@ over - cells pad + @ .x  ok.
+    1-  ok.
+  repeat  ok.
+  drop  ok.
+  ok.
+  \ Restore original stack  ok.
+  0  ok.
+  begin  ok.
+    dup r@ u<  ok.
+  while  ok.
+    dup cells pad + @ swap  ok.
+    1+  ok.
+  repeat  ok.
+  rdrop  ok.
+  drop  ok.
+;  ok.
+  ok.
+: insight ( -- )  ( Long listing of everything inside of the dictionary structur
+e )  ok.
+    base @ hex cr  ok.
+    forth @  ok.
+    begin  ok.
+        dup  ok.
+    while  ok.
+         ." Addr: "     dup .x  ok.
+        ."  Link: "     dup link@ .x  ok.
+        ."  Flags: "    dup cell+ c@ 128 and if ." I " else ." - " then  ok.
+                        dup @ 7 and ?dup if 1- u. else ." - " then  ok.
+        ."  Code: "     dup cell+ count 127 and + aligned .x  ok.
+        space           dup cell+ count 127 and type  ok.
+        link@ cr  ok.
+    repeat  ok.
+    drop  ok.
+    base !  ok.
+;  ok.
+  ok.
+0 variable disasm-$    ( Current position for disassembling )  ok.
+0 variable disasm-cont ( Continue up to this position )  ok.
+  ok.
+: name. ( Address -- )  ( If the address is Code-Start of a dictionary word, it 
+gets named. )  ok.
+  ok.
+  dup ['] s, 24 + = \ Is this a string literal ?  ok.
+  if  ok.
+    ."   --> s" [char] " emit space  ok.
+    disasm-$ @ count type  ok.
+    [char] " emit  ok.
+  ok.
+    disasm-$ @ c@ 1+ aligned disasm-$ +!  ok.
+    drop exit  ok.
+  then  ok.
+  ok.
+  >r  ok.
+  forth @  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    dup cell+ count 127 and + aligned ( Dictionary Codestart )  ok.
+      r@ = if ."   --> " dup cell+ count 127 and type then  ok.
+    link@  ok.
+  repeat  ok.
+  drop r>  ok.
+  ok.
+  $000E =                                  \ A call to execute  ok.
+  disasm-$ @ 2 cells - @ $C000 and $C000 =  \ after a literal which has bit $400
+0 set means:  ok.
+  and                                        \ Memory fetch.  ok.
+  if  ok.
+    ."   --> " disasm-$ @ 2 cells - @ $3FFF and .x ." @"  ok.
+  then  ok.
+;  ok.
+  ok.
+: alu. ( Opcode -- ) ( If this opcode is from an one-opcode definition, it gets 
+named. This way inlined ALUs get a proper descri  ok.
+  ok.
+  dup $6127 = if ." >r"    drop exit then  ok.
+  dup $6B11 = if ." r@"    drop exit then  ok.
+  dup $6B1D = if ." r>"    drop exit then  ok.
+  dup $600C = if ." rdrop" drop exit then  ok.
+  ok.
+  $FF73 and  ok.
+  >r  ok.
+  forth @  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    dup cell+ count 127 and + aligned @ ( Dictionary First-Opcode )  ok.
+        dup $E080 and $6080 =  ok.
+        if  ok.
+          $FF73 and r@ = if rdrop cell+ count 127 and type space exit then  ok.
+        else  ok.
+          drop  ok.
+        then  ok.
+  ok.
+    link@  ok.
+  repeat  ok.
+  drop r> drop  ok.
+;  ok.
+  ok.
+  ok.
+: memstamp ( Addr -- ) dup .x ." : " @ .x ."   " ; ( Shows a memory location nic
+ely )  ok.
+  ok.
+: disasm-step ( -- )  ok.
+  disasm-$ @ memstamp  ok.
+  disasm-$ @ @        ( Fetch next opcode )  ok.
+  1 cells disasm-$ +! ( Increment position )  ok.
+  ok.
+  dup $8000 and         if ." Imm  " $7FFF and       dup .x 6 spaces            
+          .x       exit then ( Immediate )  ok.
+  dup $E000 and $0000 = if ." Jmp  " $1FFF and cells dup                        
+          .x name. exit then ( Branch )  ok.
+  dup $E000 and $2000 = if ." JZ   " $1FFF and cells disasm-cont @ over max disa
+sm-cont ! .x       exit then ( 0-Branch )  ok.
+  dup $E000 and $4000 = if ." Call " $1FFF and cells dup                        
+          .x name. exit then ( Call )  ok.
+                           ." Alu"   13 spaces dup alu. $80 and if ." exit" then
+                             ( ALU )  ok.
+;  ok.
+  ok.
+: seec ( -- ) ( Continues to see )  ok.
+  base @ hex cr  ok.
+  0 disasm-cont !  ok.
+  begin  ok.
+    disasm-$ @ @  ok.
+    dup  $E080 and $6080 =           ( Loop terminates with ret )  ok.
+    swap $E000 and 0= or             ( or when an unconditional jump is reached.
+ )  ok.
+    disasm-$ @ disasm-cont @ u>= and ( Do not stop when there has been a conditi
+onal jump further )  ok.
+  ok.
+    disasm-step cr  ok.
+  until  ok.
+  ok.
+  base !  ok.
+;  ok.
+  ok.
+: see ( -- ) ( Takes name of definition and shows its contents from beginning to
+ first ret )  ok.
+  ' disasm-$ !  ok.
+  seec  ok.
+;  ok.
+  ok.
+cornerstone new  ok.
+  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   A few IO registers  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+  $08C0 constant pwm-red  ok.
+  $08D0 constant pwm-green  ok.
+  $08E0 constant pwm-blue  ok.
+  ok.
+: buttons $08F0 io@ ; \ Read button state  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Ledcomm  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+$1010 constant l-data  ok.
+$2010 constant l-flags  ok.
+$2020 constant timebase \ Default: 1200 / 24 MHz = 50 us  ok.
+$2030 constant charging \ Default:   24 / 24 MHz =  1 us  ok.
+  ok.
+: stop   ( -- ) $0010 l-flags bis! ;  ok.
+: start  ( -- ) $0010 l-flags bic! ;  ok.
+  ok.
+: bright ( -- ) $0000 l-flags io! ; \ Release reset, switch to bright mode  ok.
+: dark   ( -- ) $0008 l-flags io! ; \ Release reset, switch to dark   mode  ok.
+  ok.
+: l-emit? ( -- ? ) pause l-flags io@ 1 and 0<> ;  ok.
+: l-key?  ( -- ? ) pause l-flags io@ 2 and 0<> ;  ok.
+: l-link? ( -- ? ) pause l-flags io@ 4 and 0<> ;  ok.
+  ok.
+: l-emit  ( c -- ) begin l-emit? until l-data io! ;  ok.
+: l-key   ( c -- ) begin l-key?  until l-data io@ ;  ok.
+  ok.
+: l-exchange ( >x -- x> true | false ) \ Send and receive one cell, do not block
+ if link fails.  ok.
+  ok.
+  begin  ok.
+    l-link? 0= if drop false exit then  ok.
+    l-emit?  ok.
+  until  ok.
+  ok.
+  l-data io!  ok.
+  ok.
+  begin  ok.
+    l-link? 0= if      false exit then  ok.
+    l-key?  ok.
+  until  ok.
+  ok.
+  l-data io@  ok.
+  true  ok.
+;  ok.
+  ok.
+: waitforlink ( -- connected )  ok.
+  ok.
+  begin  ok.
+  ok.
+    %0111010001010110111101011. \ Quake lights, but in binary: 10 FLUORESCENT FL
+ICKER  ok.
+  ok.
+    25 0 do  ok.
+      over 1 and if bright else dark then  ok.
+      dshr  ok.
+  ok.
+      100 ms \ Normal timing for quake lights  ok.
+  ok.
+      \ Add a bit randomness to timing because Ledcomm does not see the other de
+vice when both are in sync perfectly.  ok.
+      \ Another solution is to have one device in bright mode the other in dark 
+mode.  ok.
+  ok.
+      random $7F and us  ok.
+  ok.
+      l-link? if 2drop unloop true  exit then  \ Connection up and running  ok.
+  ok.
+      buttons 1 6 lshift and 0<>  ok.
+      esc? or if 2drop unloop false exit then  \ Pressed ESC or Menu  ok.
+  ok.
+    loop  ok.
+    2drop  ok.
+  ok.
+  again  ok.
+;  ok.
+  ok.
+: chat ( -- ) \ Let humans have a conversation!  ok.
+  cr  ok.
+  stop \ Reset Ledcomm  ok.
+  bright  ok.
+  ok.
+  begin  ok.
+    waitforlink  ok.
+    if  ok.
+      begin  ok.
+        l-link? l-key? emit? and and if l-key highlight emit normal then  ok.
+        l-link? key? l-emit? and and if   key dup l-emit normal emit then  ok.
+        l-link? not  ok.
+      until  ok.
+    else  ok.
+      stop exit  ok.
+    then  ok.
+  again  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Snake game in Forth  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+: hello-snake ( -- )  ok.
+  ok.
+  +lcd page  ok.
+  ok.
+  cr  ok.
+  highlight  ok.
+  ."  --..,_                     _,.--.     " cr  ok.
+  ."     `'.'.                .'`__ o  `;__." cr  ok.
+  ."        '.'.            .'.'`  '---'`  `" cr  ok.
+  ."   cjr    '.`'--....--'`.'              " cr  ok.
+  ."            `'--....--'`                " cr  ok.
+  normal  ok.
+  cr  ok.
+  cr  ok.
+  ok.
+  ." Press " highlight ." A" normal ."  for one player" cr  ok.
+  cr  ok.
+  ." Press " highlight ." B" normal ."  for two players over Ledcomm" cr  ok.
+  cr  ok.
+ \ ." Insert a pair of identical round" cr  ok.
+ \ ." red, orange or yellow" cr  ok.
+ \ ." high-brightness LEDs" cr  ok.
+ \ ." into your badges." cr  ok.
+ \ cr  ok.
+  highlight  ok.
+  ." Anode:   Pmod pin 1 (P47)" cr  ok.
+  ." Cathode: Pmod pin 2 (P48)" cr  ok.
+  normal  ok.
+  cr  ok.
+  ." Press " highlight ." MENU" normal ."  to come back here" cr  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Snake appearance  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+0 variable snake-x  ok.
+0 variable snake-y  ok.
+0 variable direction  ok.
+  ok.
+64 constant maxlength  ok.
+maxlength cells buffer: snakepos  ok.
+0 variable head  ok.
+0 variable tail  ok.
+  ok.
+: xy>cell ( x y -- u ) 8 lshift or ;  ok.
+: cell>xy ( u -- x y ) dup $FF and swap 8 rshift ;  ok.
+  ok.
+: snakelength ( -- u ) head @ tail @ - maxlength 1- and ;  ok.
+  ok.
+: printsnake ( -- )  ok.
+  tail @  ok.
+  begin  ok.
+    dup cells snakepos + @ cell>xy 40 * + [char] o swap char!  ok.
+    1+ maxlength 1- and  ok.
+    dup head @ =  ok.
+  until  ok.
+  cells snakepos + @ cell>xy 40 * + [char] * swap char!  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Same for player two  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+0 variable snake-x-two  ok.
+0 variable snake-y-two  ok.
+0 variable direction-two  ok.
+  ok.
+maxlength cells buffer: snakepos-two  ok.
+0 variable head-two  ok.
+0 variable tail-two  ok.
+  ok.
+: snakelength-two ( -- u ) head-two @ tail-two @ - maxlength 1- and ;  ok.
+  ok.
+: printsnake-two ( -- )  ok.
+  tail-two @  ok.
+  begin  ok.
+    dup cells snakepos-two + @ cell>xy 40 * + [char] o $80 or swap char!  ok.
+    1+ maxlength 1- and  ok.
+    dup head-two @ =  ok.
+  until  ok.
+  cells snakepos-two + @ cell>xy 40 * + [char] * $80 or swap char!  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Snake element movement  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+: eat ( x y -- ) \ Let snake grow (up to maximum)  ok.
+  ok.
+  snakelength maxlength 1- = if  ok.
+  tail @ 1+ maxlength 1- and tail !  ok.
+  then  ok.
+  ok.
+  head @ 1+ maxlength 1- and head !  ok.
+  xy>cell snakepos head @ cells + !  ok.
+;  ok.
+  ok.
+: crawl ( x y -- ) \ Let snake crawl by clipping tail before letting grow  ok.
+  tail @ 1+ maxlength 1- and tail !  ok.
+  eat  ok.
+;  ok.
+  ok.
+: collision ( x y -- flag ) \ Check for collision of x,y with current elements o
+f snake  ok.
+  xy>cell >r  ok.
+  ok.
+  tail @  ok.
+  begin  ok.
+    dup cells snakepos + @ r@ = if drop rdrop true exit then  ok.
+    1+ maxlength 1- and  ok.
+    dup head @ =  ok.
+  until  ok.
+  drop rdrop false  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Snake element movement for player two  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+: eat-two ( x y -- ) \ Let snake grow (up to maximum)  ok.
+  ok.
+  snakelength-two maxlength 1- = if  ok.
+  tail-two @ 1+ maxlength 1- and tail-two !  ok.
+  then  ok.
+  ok.
+  head-two @ 1+ maxlength 1- and head-two !  ok.
+  xy>cell snakepos-two head-two @ cells + !  ok.
+;  ok.
+  ok.
+: crawl-two ( x y -- ) \ Let snake crawl by clipping tail before letting grow  o
+k.
+  tail-two @ 1+ maxlength 1- and tail-two !  ok.
+  eat-two  ok.
+;  ok.
+  ok.
+: collision-two ( x y -- flag ) \ Check for collision of x,y with current elemen
+ts of snake  ok.
+  xy>cell >r  ok.
+  ok.
+  tail-two @  ok.
+  begin  ok.
+    dup cells snakepos-two + @ r@ = if drop rdrop true exit then  ok.
+    1+ maxlength 1- and  ok.
+    dup head-two @ =  ok.
+  until  ok.
+  drop rdrop false  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Pseudo random number generator so that both sides use the same values  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+$BEEF variable seed  ok.
+  ok.
+: prng ( -- x ) \ 16-bit xorshift PRNG  ok.
+  seed @  ok.
+  dup 7 lshift xor  ok.
+  dup 9 rshift xor  ok.
+  dup 8 lshift xor  ok.
+  dup seed !  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Snake(s) love(s) food!  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+0 variable apple-x  ok.
+0 variable apple-y  ok.
+  ok.
+: newapple ( -- )  ok.
+  prng 40 um* nip apple-x !  ok.
+  prng 30 um* nip apple-y !  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   A little fun with colors  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+: hue>rgb ( h -- r g b ) \ Hue values range from 0 to 511 and repeat.  ok.
+  ok.
+  511 and 3 *  ok.
+  ok.
+  dup 8 rshift  ok.
+  case  ok.
+    0 of          $FF and     255 swap   0 endof  ok.
+    1 of $FF swap $FF and -        255   0 endof  ok.
+    2 of          $FF and       0  255 rot endof  ok.
+    3 of $FF swap $FF and -     0 swap 255 endof  ok.
+    4 of          $FF and            0 255 endof  ok.
+    5 of $FF swap $FF and -   255    0 rot endof  ok.
+    drop 0 swap 0 swap 0 swap  ok.
+  endcase  ok.
+;  ok.
+  ok.
+: hue ( h -- )  ok.
+  hue>rgb  ok.
+  \ Full RGB values are a it too bright, so adjust 8 bit RGB values to 16 bit va
+lues manually  ok.
+  6 lshift pwm-blue io! 4 lshift pwm-green io! 5 lshift pwm-red io!  ok.
+;  ok.
+  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+\   Game logic  ok.
+\ ------------------------------------------------------------------------------
+  ok.
+  ok.
+0 variable time  ok.
+0 variable multiplayer  ok.
+  ok.
+: init-snakes ( -- )  ok.
+  page  ok.
+  ok.
+  0 snake-x !   0 snake-x-two !  ok.
+  0 snake-y !   0 snake-y-two !  ok.
+  ok.
+  3 head !      3 head-two !  ok.
+  0 tail !      0 tail-two !  ok.
+  ok.
+  snakepos     maxlength cells 0 fill  ok.
+  snakepos-two maxlength cells 0 fill  ok.
+  ok.
+  head     @ cells snakepos     + @ cell>xy snake-y     ! snake-x     !  ok.
+  head-two @ cells snakepos-two + @ cell>xy snake-y-two ! snake-x-two !  ok.
+  ok.
+  8 direction ! 8 direction-two !  ok.
+  0 time !  ok.
+  newapple  ok.
+;  ok.
+  ok.
+: game-loop ( -- )  ok.
+  ok.
+  $BEEF seed !  ok.
+  ok.
+  multiplayer @  ok.
+  if  ok.
+    cr cr cr ." Waiting for connection..."  ok.
+    stop bright waitforlink 0= if stop exit then  ok.
+  then  ok.
+  ok.
+  -lcd init-snakes  ok.
+  ok.
+  500 ms \ Get ready!  ok.
+  ok.
+  begin  ok.
+    \ Wait for end of screen update actvity  ok.
+    waitretrace  ok.
+  ok.
+    \ Now quickly clear character buffer and paint new snake.  ok.
+    1200 begin 1- 32 over char! dup 0= until drop  ok.
+  ok.
+                     printsnake  ok.
+    multiplayer @ if printsnake-two then  ok.
+  ok.
+    \ Paint apple.  ok.
+    apple-x @ apple-y @ 40 * + [char] @ $80 or swap char!  ok.
+  ok.
+    \ Scan buttons for own direction  ok.
+    buttons  dup $F and ?dup if direction ! then  ok.
+         1 6 lshift and if exit then \ Button "Menu"  ok.
+  ok.
+    \ Exchange directions with the other player  ok.
+    multiplayer @  ok.
+    if  ok.
+      direction @ l-exchange 0= if exit then direction-two !  ok.
+      120 0 do cycles/ms delay-cycles l-link? 0= if unloop exit then loop  ok.
+    else  ok.
+      120 ms  ok.
+    then  ok.
+  ok.
+    direction @  ok.
+    case  ok.
+      8 of snake-x @ 1+ 39 umin snake-x ! endof  ok.
+      1 of snake-y @ 1+ 29 umin snake-y ! endof  ok.
+      4 of snake-x @ 1-  0  max snake-x ! endof  ok.
+      2 of snake-y @ 1-  0  max snake-y ! endof  ok.
+    endcase  ok.
+  ok.
+    snake-x @ snake-y @  ok.
+    2dup 2dup apple-x @ apple-y @ d=  ok.
+    if eat newapple else crawl then  ok.
+    collision  ok.
+  ok.
+    multiplayer @  ok.
+    if  ok.
+      direction-two @  ok.
+      case  ok.
+        8 of snake-x-two @ 1+ 39 umin snake-x-two ! endof  ok.
+        1 of snake-y-two @ 1+ 29 umin snake-y-two ! endof  ok.
+        4 of snake-x-two @ 1-  0  max snake-x-two ! endof  ok.
+        2 of snake-y-two @ 1-  0  max snake-y-two ! endof  ok.
+      endcase  ok.
+  ok.
+      snake-x-two @ snake-y-two @  ok.
+      2dup 2dup apple-x @ apple-y @ d=  ok.
+      if eat-two newapple else crawl-two then  ok.
+      collision-two  ok.
+      or  ok.
+    then  ok.
+  ok.
+    if init-snakes then \ In case of collision: Start new game.  ok.
+  ok.
+    time @ 1+ dup hue time !  ok.
+    prng drop \ Advance PRNG with time so that apples appear on different locati
+ons  ok.
+  ok.
+  esc? until  ok.
+;  ok.
+  ok.
+: snake ( -- )  ok.
+  dint lcd-init nocaption  ok.
+  ok.
+  begin  ok.
+    stop \ Switch off Ledcomm  ok.
+    hello-snake \ Display welcome screen  ok.
+  ok.
+    \ Wait for A or B (or both) being pressed  ok.
+    begin  ok.
+      esc? if exit then \ Stop if ESC is pressed on terminal  ok.
+      buttons  ok.
+      dup %10 9 lshift and 0<> multiplayer !  \ Button B  ok.
+          %11 9 lshift and                    \ A or B  ok.
+    until  ok.
+  ok.
+    game-loop  ok.
+  again  ok.
+;  ok.
+  ok.
+' snake init !  ok.
+

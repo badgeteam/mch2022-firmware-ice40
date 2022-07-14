@@ -78,7 +78,7 @@ $2030 constant charging \ Default:   24 / 24 MHz =  1 us
 ;
 
 : chat ( -- ) \ Let humans have a conversation!
-
+  cr
   stop \ Reset Ledcomm
   bright
 
@@ -86,12 +86,12 @@ $2030 constant charging \ Default:   24 / 24 MHz =  1 us
     waitforlink
     if
       begin
-        l-link? l-key? emit? and and if l-key emit then
-        l-link? key? l-emit? and and if key l-emit then
+        l-link? l-key? emit? and and if l-key highlight emit normal then
+        l-link? key? l-emit? and and if   key dup l-emit normal emit then
         l-link? not
       until
     else
-      exit
+      stop exit
     then
   again
 ;
