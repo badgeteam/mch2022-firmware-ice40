@@ -1,0 +1,45 @@
+
+\ Examples with multitasking
+
+\ --------------------------------------------------
+\   Task switch counter
+\ --------------------------------------------------
+
+0. 2variable counter
+: c ( -- ) counter 2@ ud. ;
+
+task: ct
+: ct& ct activate
+  begin counter 2@ 1. d+ counter 2! pause again ;
+
+ct& multitask tasks
+
+\ --------------------------------------------------
+\   Blinky
+\ --------------------------------------------------
+
+: delay-ticks ( ticks -- )
+  ticks ( ticks start )
+  begin
+    pause
+    2dup ( ticks start ticks start )
+    ticks ( ticks start ticks start current )
+    swap - ( ticks start ticks elapsed )
+    u<=
+  until
+  2drop
+;
+
+task: blinky
+
+: blinky&
+
+  blinky activate
+  begin
+    random leds
+
+    1000 0 do
+      48000 delay-ticks \ For 48 MHz
+    loop
+  again
+;

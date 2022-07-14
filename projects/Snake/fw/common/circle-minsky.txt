@@ -1,0 +1,32 @@
+\ -------------------------------------------------------------
+\  Minsky circle
+\ -------------------------------------------------------------
+
+\ 0 variable circle-xm
+  0 variable circle-ym
+
+6 constant circle-shift \ Smaller value results in denser circle
+
+: minsky-circle ( xm ym r -- )
+
+ swap circle-ym ! ( xm r )
+ swap >r ( r R: xm )
+ 0 swap ( 0 r R: xm )
+
+  begin
+
+    over >r  \ Prepare sign change detection
+
+  ( x y -- x'' y' )
+  swap over circle-shift 1+ arshift + swap \ x'  = x  + y  >>> c+1
+       over circle-shift    arshift -      \ y'  = y  - x' >>> c
+  swap over circle-shift 1+ arshift + swap \ x'' = x' + y' >>> c+1
+
+    over r@ xor r> and 0 < not \ Detect change of sign from negative to positive
+
+  while
+    over r@ + over circle-ym @ + putpixel
+  repeat
+
+  rdrop 2drop
+;

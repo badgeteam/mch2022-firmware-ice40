@@ -1,0 +1,52 @@
+\ -------------------------------------------------------------
+\  Circle, four-connect algorithm
+\ -------------------------------------------------------------
+
+0 variable circle-xm   0 variable circle-ym
+0 variable circle-r    0 variable circle-d
+
+: circle-putpixel ( x y -- ) swap circle-xm @ + swap circle-ym @ + putpixel ;
+
+: circle-init ( -- 0 R )
+  circle-r @ 1+ 2/ negate circle-d !
+  0 circle-r @ ( 0 R )
+;
+
+: circle-step ( x y -- x' y' )
+    circle-d @ 0 <= if ( x y ) swap 1+ dup circle-d +! swap
+                    else            1- dup negate circle-d +!
+                    then
+;
+
+: circle ( xm ym r -- )
+
+  circle-r ! circle-ym ! circle-xm !
+
+  circle-init
+  begin dup while
+    2dup circle-putpixel
+    circle-step
+  repeat
+  2drop
+
+  circle-init
+  begin dup while
+    2dup swap negate circle-putpixel
+    circle-step
+  repeat
+  2drop
+
+  circle-init
+  begin dup while
+    over negate over negate circle-putpixel
+    circle-step
+  repeat
+  2drop
+
+  circle-init
+  begin dup while
+    2dup negate swap circle-putpixel
+    circle-step
+  repeat
+  2drop
+;

@@ -1,0 +1,52 @@
+
+;------------------------------------------------------------------------------
+;  Snake
+;------------------------------------------------------------------------------
+
+This is a free interpretation of the classic "snake" game with ASCII art
+and a Ledcomm based two-player mode. Enjoy!
+
+The infrastructure is mostly identical with the Forth project,
+with Ledcomm logic included (same as in the Ledcomm project)
+and with the Pmod lab code replaced by the game.
+
+You need an identical pair of LEDs and two badges for multiplayer mode.
+
+Red, round, clear high-brightness LEDs are recommended,
+orange and yellow LEDs should work, too.
+
+Anode:   Pmod pin 1 (P47)
+Cathode: Pmod pin 2 (P48)
+
+Matthias Koch, mecrisp.sourceforge.net
+
+;------------------------------------------------------------------------------
+;  Hacking
+;------------------------------------------------------------------------------
+
+If you wish, you can open terminal with 115200 baud 8N1 LF to ttyACM1
+close the game by pressing ESC and type "chat" to directly experiment
+with the optical communication.
+
+Default timing is:
+
+1200 timebase io!  \ 1200 / 24 MHz = 50 us
+  24 charging io!  \   24 / 24 MHz =  1 us
+
+You can try the effect of longer or shorter timebase values,
+default is 50 us; try timebases between 5 us and 300 us.
+
+Keep in mind that whereas Ledcomm itself offers flow control,
+the serial terminal does not and will overrun Ledcomm when
+piping data at 115200 baud.
+
+;------------------------------------------------------------------------------
+; Special IO registers not available in the vanilla Forth core
+;------------------------------------------------------------------------------
+
+  $1010: RW  Ledcomm Data   Write: Send character. Read: Received character.
+  $2010: RW  Ledcomm Flags  [4] Reset (RW) [3] Dark mode (RW) [2] Link up [1] Valid [0] Ready
+  $2020: RW  Timebase      in cycles at 24 MHz
+  $2030: RW  Charging time in cycles at 24 MHz
+
+Pmod pins 1 & 0 are hardwired for Ledcomm and not available in the Pmod registers.
