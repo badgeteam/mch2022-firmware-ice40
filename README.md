@@ -22,10 +22,10 @@ Try loading your first bitstream!
 
 Besides your badge and an USB cable to connect it to your computer on which it will appear as `ttyACM0` and `ttyACM1` get these two files:
 
-[Bitstream loader tool](https://github.com/badgeteam/mch2022-firmware-esp32/blob/master/tools/uart_fpga.py)
+[Bitstream loader tool](https://github.com/badgeteam/mch2022-tools/blob/master/webusb_fpga.py)
 and an bitstream for the FPGA, [hello_world.bin](https://github.com/badgeteam/mch2022-firmware-ice40/blob/master/projects/Hello-World/hello_world.bin).
 
-On the badge, navigate to "Development tools" --> "FPGA download mode" and transmit the bitstream using your computer `uart_fpga.py /dev/ttyACM0 hello_world.bin`
+For loading a ready-made bitstream into the badge, type: `webusb_fpga.py hello_world.bin`
 
 But as this May Contain Hackers, we hope to introduce many into creating their own designs.
 
