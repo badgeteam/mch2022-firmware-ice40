@@ -1,8 +1,9 @@
 MCH2022 badge iCE40 gateware
 ============================
 
-Collection of ip cores / demos for the [MCH2022 badge](https://github.com/badgeteam/mch2022-badge-hardware)
+Collection of Verilog ip cores / demos for the [MCH2022 badge](https://github.com/badgeteam/mch2022-badge-hardware)
 
+More demos, written in Silice: [https://github.com/sylefeb/mch2022-silice](https://github.com/sylefeb/mch2022-silice)
 
 Note about submodules
 ---------------------
