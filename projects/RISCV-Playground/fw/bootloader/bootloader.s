@@ -105,7 +105,8 @@ FetchFirmware:
 Boot:
 
   lw x10, 0(zero)
-  beq x10, zero, Echo # No file given? The file interface will delivers zero then which are invalid opcodes.
+# beq x10, zero, Echo # No file given? The file interface will delivers zero then which are invalid opcodes.
+  beq x10, zero, weatherforecast # A nice animation instead of a simple UART echo :-)
   jalr zero, zero, 0  # Enter freshly loaded firmware.
 
 Echo:
@@ -182,5 +183,7 @@ serial_key: # Receive one character into x8
   li x14, uart_data
   lbu x8, 0(x14)
   ret
+
+.include "weather-forecast.s"
 
 .org 1024, 0
