@@ -16,7 +16,7 @@ Peripherals included for default:
   - GPIO registers for PMOD pin access
   - Timer tick interrupt
   - LEDs
-  - UART terminal, 115200 Baud 8N1
+  - UART terminal, 115200 Baud 8N1 LF
   - 1 kb initialised RAM for bootloader
   - 128 kb RAM initialised using file read interface over SPI
 
@@ -136,7 +136,6 @@ Interrupt:
 Hello GCC:
 
   A small project in C featuring serial terminal, buttons, LED and LCD.
-  Connect to this one with 115200 baud 8N1 LF on ttyACM1.
 
 Forth:
 
