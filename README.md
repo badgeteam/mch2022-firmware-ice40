@@ -77,7 +77,7 @@ Let's try for short:
 
 For a bunch of TTL logic chip to do something useful, you need to wire them up - and the way you wire these determines the function of the completed circuit.
 
-A "Field Programmambe Gate Array" contains a grid of "universal gates" calles lookup-tables with -in our case- 4 binary inputs and 1 output, and every of these is accompanied by 1 flipflop bit. Nothing special so far. The special sauce of an FPGA is their connection - that there is a dense mesh of wires in different lengths that crisscross the entire chip, with switchbox points that allow to choose how to connect the individual logic elements to the mesh of wires. By selecting which switchboxes to activate, one builds an actual digital circuit on the FPGA.
+A "Field Programmambe Gate Array" contains a grid of "universal gates" called lookup-tables with -in our case- 4 binary inputs and 1 output, and every of these is accompanied by 1 flipflop bit. Nothing special so far. The special sauce of an FPGA is their connection - that there is a dense mesh of wires in different lengths that crisscross the entire chip, with switchbox points that allow to choose how to connect the individual logic elements to the mesh of wires. By selecting which switchboxes to activate, one builds an actual digital circuit on the FPGA.
 
 For your curiosity, here is a DIY FPGA: [http://blog.notdot.net/2012/10/Build-your-own-FPGA](http://blog.notdot.net/2012/10/Build-your-own-FPGA)
 
