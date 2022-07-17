@@ -128,6 +128,11 @@ Tinyblinky:
 
   A little blinky in RISC-V assembler. A nice "hello world" project.
 
+Interrupt:
+
+  An example on how to use interrupts on RISC-V, including notes
+  on compressed opcodes and and small tools for printing hex numbers.
+
 Hello GCC:
 
   A small project in C featuring serial terminal, buttons, LED and LCD.
