@@ -59,33 +59,33 @@ Address + 12: Toggle bits in register that are 1 in the write access
 It works on all writeable registers, and in word, halfword and byte writes.
 Bits [3:2] are ignored on reads.
 
-0x400000010: RW  PMOD [23:16] DIR [15:8] OUT [7:0] IN
-0x400000010: RO  PMOD, byte access: IN
-0x400000011: RW  PMOD, byte access: OUT
-0x400000012: RW  PMOD, byte access: DIR
+0x40000010: RW  PMOD [23:16] DIR [15:8] OUT [7:0] IN
+0x40000010: RO  PMOD, byte access: IN
+0x40000011: RW  PMOD, byte access: OUT
+0x40000012: RW  PMOD, byte access: DIR
 
-0x400000020: RW  Example register
-0x400000040: RO  Example feedback register
-0x400000080: RO  Button states
+0x40000020: RW  Example register
+0x40000040: RO  Example feedback register
+0x40000080: RO  Button states
 
-0x400000100: RW  LEDs: [6] Blue in [5] Green in [4] Red in   [3] 0 [2] Blue [1] Green [0] Red
-0x400000200: RW  Sigma-delta modulator brightness for red   channel
-0x400000400: RW  Sigma-delta modulator brightness for green channel
-0x400000800: RW  Sigma-delta modulator brightness for blue  channel
+0x40000100: RW  LEDs: [6] Blue in [5] Green in [4] Red in   [3] 0 [2] Blue [1] Green [0] Red
+0x40000200: RW  Sigma-delta modulator brightness for red   channel
+0x40000400: RW  Sigma-delta modulator brightness for green channel
+0x40000800: RW  Sigma-delta modulator brightness for blue  channel
 
-0x400001000: RW  LCD control and sync lines
-0x400002000: WO  LCD data and command
-0x400004000: RW  Normal    color [31:16] background [15:0] foreground
-0x400008000: RW  Highlight color [31:16] background [15:0] foreground
+0x40001000: RW  LCD control and sync lines
+0x40002000: WO  LCD data and command
+0x40004000: RW  Normal    color [31:16] background [15:0] foreground
+0x40008000: RW  Highlight color [31:16] background [15:0] foreground
 
-0x400010000: RW  Serial terminal. Write: Send character [7:0]. Read: Received character [7:0] and flags.
-0x400020000: RO  For reading flags [10] Random [9] Busy [8] Valid without removing character [7:0] from receive FIFO.
+0x40010000: RW  Serial terminal. Write: Send character [7:0]. Read: Received character [7:0] and flags.
+0x40020000: RO  For reading flags [10] Random [9] Busy [8] Valid without removing character [7:0] from receive FIFO.
 
-0x400040000: RW  Timer count register. Generates interrupt on overflow.
-0x400080000: RW  Timer reload value after overflow, default 0.
+0x40040000: RW  Timer count register. Generates interrupt on overflow.
+0x40080000: RW  Timer reload value after overflow, default 0.
 
-0x400100000 to
-0x480000000 are unused and can serve for your own enhancements.
+0x40100000 to
+0x48000000 are unused and can serve for your own enhancements.
 
 Bits [27:4] are one-hot decoded. Every register has its own bit, which simplifies
 the decoding logic, and also allows to set multiple registers at once.
