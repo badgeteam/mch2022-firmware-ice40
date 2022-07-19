@@ -1,6 +1,6 @@
 #!/bin/sh
 
-riscv64-linux-gnu-as interrupt.s -o interrupt.o -march=rv32i
+riscv64-linux-gnu-as interrupt.s -o interrupt.o -march=rv32im
 riscv64-linux-gnu-ld -o interrupt.elf -T memmap interrupt.o -m elf32lriscv
 riscv64-linux-gnu-objdump -Mnumeric -D interrupt.elf > interrupt.list
 riscv64-linux-gnu-objcopy interrupt.elf interrupt.bin -O binary
