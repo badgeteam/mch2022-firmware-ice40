@@ -75,8 +75,8 @@
 .equ timer_ticks,   0x40040000
 .equ timer_reload,  0x40080000
 
-.equ CYCLES_US,    12
-.equ CYCLES_MS, 12000
+.equ CYCLES_US,    15
+.equ CYCLES_MS, 15000
 
 # -----------------------------------------------------------------------------
 #   Execution starts here

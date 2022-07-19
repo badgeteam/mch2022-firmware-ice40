@@ -33,8 +33,8 @@
 .equ LCD_UPDATE, 8
 .equ LCD_CMD, 0x100
 
-.equ CYCLES_US,    12
-.equ CYCLES_MS, 12000
+.equ CYCLES_US,    15
+.equ CYCLES_MS, 15000
 
 # -----------------------------------------------------------------------------
 #   Cold start entry here

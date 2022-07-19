@@ -10,8 +10,8 @@
 //   Timing
 // -----------------------------------------------------------------------------
 
-#define CYCLES_US    12
-#define CYCLES_MS 12000
+#define CYCLES_US    15
+#define CYCLES_MS 15000
 
 uint32_t cycles(void)
 {
