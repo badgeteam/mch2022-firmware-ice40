@@ -115,16 +115,16 @@ iteration_finished:
 
   # Move viewport with joystick
 
-   andi x13, x8, 4
+   andi x13, x8, 8
    beq x13, zero, 1f
      add x4, x4, x6
-1: andi x13, x8, 8
+1: andi x13, x8, 4
    beq x13, zero, 1f
      sub x4, x4, x6
-1: andi x13, x8, 2
+1: andi x13, x8, 1
    beq x13, zero, 1f
      add x5, x5, x6
-1: andi x13, x8, 1
+1: andi x13, x8, 2
    beq x13, zero, 1f
      sub x5, x5, x6
 1:
