@@ -56,7 +56,9 @@ The FPGA, a Lattice ice40 UP5K, receives its bitstream by the ESP32 on the badge
 * an external serial QSPI RAM chip
 * a PMOD connector that carries 8 FPGA IO lines (or 4 differential pairs), VCC and GND.
 
-Also, using the same wires that are necessary for booting the bitstream, the ESP32 notified the FPGA of the current state of the [buttons](https://github.com/badgeteam/mch2022-firmware-ice40/tree/master/projects/Buttons) and provides a mechanism to access data files.
+Also, using the same wires that are necessary for booting the bitstream, the ESP32 notified the FPGA of the current state of the [buttons](https://github.com/badgeteam/mch2022-firmware-ice40/tree/master/projects/Buttons) and provides a mechanism to [access data files](https://github.com/badgeteam/mch2022-firmware-ice40/blob/master/cores/spi_slave/rtl/spi_dev_fread.v).
+
+Have a look at the [schematic](https://github.com/badgeteam/mch2022-badge-hardware/blob/master/schematic.pdf) and [pin constraints file](https://github.com/badgeteam/mch2022-firmware-ice40/blob/master/projects/_common/data/mch2022-proto4.pcf) now.
 
 If you want to think of the badge solely as FPGA dev board, you can ignore most of its other functionality, just keep in mind these handy hints:
 
