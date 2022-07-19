@@ -17,7 +17,7 @@
 #   Execution starts here
 # -----------------------------------------------------------------------------
 
-.equ mandel_shift, 12  # Use 12 fractional digits. Hardwired, do not change.
+.equ mandel_shift, 12  # Use 12 fractional digits.
 
   # x4:  Center X coordinate
   # x5:  Center Y coordinate
@@ -71,7 +71,7 @@ iteration_loop:
         add x8, x8,  x8       # (Zr^2 - Zi^2 + 2*Zi^2) = (Zr^2 + Zi^2)
         add x8, x8, x10       # Detour saves one register...
 
-        srli x8, x8, 14 + mandel_shift    # Finished if (Zr^2 + Zi^2) gets larger
+        srli x8, x8, 2 + 2*mandel_shift   # Finished if (Zr^2 + Zi^2) gets larger
         bne x8, zero, iteration_finished  # than 4 << mandel_shift
 
         srai x10, x10, mandel_shift       # (Zr^2 - Zi^2) >>> mandel_shift
