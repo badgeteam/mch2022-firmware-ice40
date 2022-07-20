@@ -138,6 +138,12 @@ Mandelbrot:
   Explore the Mandelbrot and Tricorn fractals in ASCII art.
   This example shows how to use the LCD and buttons in assembler.
 
+Graphics:
+
+  An example for drawing graphics - for real, no ASCII art this time.
+  Initialises the LCD for graphics, calculates a 256 entries color palette
+  (hat off to Rrrola for his "Symetrie" palette) and draws Mandelbrot set.
+
 Hello GCC:
 
   A small project in C featuring serial terminal, buttons, LED and LCD.
