@@ -1,0 +1,9 @@
+#!/bin/sh
+
+riscv64-linux-gnu-as graphics.s -o graphics.o -march=rv32im
+riscv64-linux-gnu-ld -o graphics.elf -T memmap graphics.o -m elf32lriscv
+riscv64-linux-gnu-objdump -Mnumeric -D graphics.elf > graphics.list
+riscv64-linux-gnu-objcopy graphics.elf graphics.bin -O binary
+
+ls -l *.bin
+md5sum *.bin
