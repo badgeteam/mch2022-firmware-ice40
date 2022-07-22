@@ -5,6 +5,8 @@ Collection of Verilog ip cores / demos for the [MCH2022 badge](https://github.co
 
 More demos, written in Silice: [https://github.com/sylefeb/mch2022-silice](https://github.com/sylefeb/mch2022-silice)
 
+Icestudio, a beginner friendly FPGA suite: [https://github.com/badgeteam/mch2022-icestudio](https://github.com/badgeteam/mch2022-icestudio)
+
 Note about submodules
 ---------------------
 
