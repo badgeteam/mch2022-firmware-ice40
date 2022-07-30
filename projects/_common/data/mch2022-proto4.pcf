@@ -57,6 +57,6 @@ set_io -nowarn -pullup no  pmod[6]      3  # PMOD9
 set_io -nowarn -pullup no  pmod[7]     46  # PMOD10
 
 # RGB driver
-set_io -nowarn             rgb[0]      39
-set_io -nowarn             rgb[1]      40
-set_io -nowarn             rgb[2]      41
+set_io -nowarn             rgb[0]      39 # green
+set_io -nowarn             rgb[1]      40 # red
+set_io -nowarn             rgb[2]      41 # blue

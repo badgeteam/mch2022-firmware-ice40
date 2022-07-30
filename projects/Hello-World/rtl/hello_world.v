@@ -3,7 +3,7 @@
 
 module top(
   input clk_in,
-  output [2:0] rgb // LED outputs. [0]: Blue, [1]: Red, [2]: Green.
+  output [2:0] rgb // LED outputs. [0]: Green, [1]: Red, [2]: Blue.
 );
 
   wire clk = clk_in; // Directly use the 12 MHz oscillator, no fancy PLL config
@@ -39,9 +39,9 @@ module top(
   ) RGBA_DRIVER (
       .CURREN(1'b1),
       .RGBLEDEN(1'b1),
+      .RGB0PWM(green),
       .RGB1PWM(red),
-      .RGB2PWM(green),
-      .RGB0PWM(blue),
+      .RGB2PWM(blue),      
       .RGB0(rgb[0]),
       .RGB1(rgb[1]),
       .RGB2(rgb[2])
