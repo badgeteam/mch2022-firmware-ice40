@@ -299,7 +299,7 @@ module top (
 		.data  (uart_data),
 		.valid (uart_valid),
 		.ack   (uart_ack),
-		.div   (8'd28), // 30M / (28 + 2) = 1 MBaud
+		.div   (8'd255), // 30M / (255 + 2) = 116731 Baud ~ 115200 Baud
 		.clk   (clk),
 		.rst   (rst)
 	);
